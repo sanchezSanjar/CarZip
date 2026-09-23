@@ -1,8 +1,32 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "src",
+  "sourceRoot": "apps/carzip-api/src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/carzip-api/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/carzip-api",
+  "projects": {
+    "car-zip": {
+      "type": "application",
+      "root": "apps/carzip-api",
+      "entryFile": "main",
+      "sourceRoot": "apps/carzip-api/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/carzip-api/tsconfig.app.json"
+      }
+    },
+    "carzip-batch": {
+      "type": "application",
+      "root": "apps/carzip-batch",
+      "entryFile": "main",
+      "sourceRoot": "apps/carzip-batch/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/carzip-batch/tsconfig.app.json"
+      }
+    }
   }
 }
