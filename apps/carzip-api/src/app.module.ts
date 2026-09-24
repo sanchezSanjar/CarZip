@@ -5,6 +5,8 @@ import { AppResolver } from './app,resolver';
 import { ConfigModule } from '@nestjs/config';
 import { ApolloDriver } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
+import { ComponentsModule } from './components/components.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { GraphQLModule } from '@nestjs/graphql';
       uploads: false,
       autoSchemaFile: true,
     }),
+    ComponentsModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
