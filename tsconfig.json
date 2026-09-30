@@ -10,7 +10,7 @@
     "sourceMap": true,
     "rootDir": "./apps",
     "outDir": "./dist",
-    "types": ["node"],
+    "types": ["node", "jest"],
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
