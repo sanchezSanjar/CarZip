@@ -260,7 +260,10 @@ export class CarInput {
 
 	// ---- deal options
 	@IsBoolean()
-	@Satisfies<CarInput>((o, v) => !(v && o.carMarket === CarMarket.EXPORT), 'Export-only cars cannot be offered for rent')
+	@Satisfies<CarInput>(
+		(o, v) => !(v && o.carMarket === CarMarket.EXPORT),
+		'Export-only cars cannot be offered for rent',
+	)
 	@Field(() => Boolean)
 	carRent: boolean;
 

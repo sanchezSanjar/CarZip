@@ -85,8 +85,15 @@ export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
 				pipeline: [
 					{
 						$project: {
-							memberNick: 1, memberImage: 1, agentCompany: 1, memberRank: 1,
-							contactPhone: 1, contactEmail: 1, contactTelegram: 1, contactWhatsapp: 1, contactKakao: 1,
+							memberNick: 1,
+							memberImage: 1,
+							agentCompany: 1,
+							memberRank: 1,
+							contactPhone: 1,
+							contactEmail: 1,
+							contactTelegram: 1,
+							contactWhatsapp: 1,
+							contactKakao: 1,
 						},
 					},
 				],

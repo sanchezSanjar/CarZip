@@ -4,8 +4,8 @@ import { CarzipBatchService } from './carzip-batch.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ConfigModule.forRoot()],
-  controllers: [CarzipBatchController],
-  providers: [CarzipBatchService],
+	imports: [ConfigModule.forRoot()],
+	controllers: [CarzipBatchController],
+	providers: [CarzipBatchService],
 })
 export class CarzipBatchModule {}
