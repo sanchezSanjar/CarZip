@@ -13,8 +13,8 @@ export class MemberResolver {
 		return this.memberService.signup(input);
 	}
 
-	@Mutation(() => String)
-	public async login(@Args('input') input: LoginInput): Promise<string> {
+	@Mutation(() => Member)
+	public async login(@Args('input') input: LoginInput): Promise<Member> {
 		console.log('Mutation: login');
 		return this.memberService.login(input);
 	}

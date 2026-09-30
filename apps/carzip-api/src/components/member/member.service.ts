@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { Model } from 'mongoose';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { Member } from '../../libs/dto/member/member';
@@ -54,7 +54,28 @@ export class MemberService {
 		}
 	}
 
-	public async login(input: LoginInput): Promise<string> {
-		return `login executed for ${input.memberNick}`;
+	public async login(input: LoginInput): Promise<Member> {
+		// memberPassword has select: false, so it must be asked for explicitly
+		const found = await this.memberModel
+			.findOne({ memberNick: input.memberNick })
+			.select('+memberPassword')
+			.lean<Member & { memberPassword: string }>()
+			.exec();
+
+		// same message for "no such nick" and "wrong password": don't reveal which one was wrong
+		if (!found || found.memberStatus === MemberStatus.DELETE) {
+			throw new BadRequestException(Message.WRONG_LOGIN);
+		}
+		const isMatch = await compare(input.memberPassword, found.memberPassword);
+		if (!isMatch) throw new BadRequestException(Message.WRONG_LOGIN);
+
+		// PENDING / REJECTED agents may log in to see their application status; posting cars is checked elsewhere
+		if (found.memberStatus === MemberStatus.BLOCK) {
+			throw new ForbiddenException(Message.BLOCKED_MEMBER);
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { memberPassword, ...member } = found;
+		return member;
 	}
 }
