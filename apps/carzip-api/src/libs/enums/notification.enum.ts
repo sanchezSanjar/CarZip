@@ -1,0 +1,24 @@
+import { registerEnumType } from '@nestjs/graphql';
+
+export enum NotificationType {
+	LIKE = 'LIKE',
+	COMMENT = 'COMMENT',
+	TEST_DRIVE = 'TEST_DRIVE',
+	AGENT_APPLICATION = 'AGENT_APPLICATION', // -> admins: new agent is waiting for review
+	AGENT_APPROVED = 'AGENT_APPROVED',
+	AGENT_REJECTED = 'AGENT_REJECTED',
+}
+registerEnumType(NotificationType, { name: 'NotificationType' });
+
+export enum NotificationStatus {
+	WAIT = 'WAIT',
+	READ = 'READ',
+}
+registerEnumType(NotificationStatus, { name: 'NotificationStatus' });
+
+export enum NotificationGroup {
+	MEMBER = 'MEMBER',
+	ARTICLE = 'ARTICLE',
+	CAR = 'CAR',
+}
+registerEnumType(NotificationGroup, { name: 'NotificationGroup' });

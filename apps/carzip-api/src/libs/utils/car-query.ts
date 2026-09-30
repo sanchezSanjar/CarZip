@@ -1,0 +1,104 @@
+import { BadRequestException } from '@nestjs/common';
+import { PipelineStage, Types } from 'mongoose';
+import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
+import { Direction } from '../enums/common.enum';
+import { CarsInquiry, NumberRange } from '../dto/car/car.input';
+
+type Cursor = { v: string | number; id: string };
+
+export function encodeCursor(sortField: CarSort, doc: Record<string, any>): string {
+	const raw = doc[sortField];
+	const v = raw instanceof Date ? raw.toISOString() : raw;
+	return Buffer.from(JSON.stringify({ v, id: String(doc._id) })).toString('base64url');
+}
+
+function decodeCursor(cursor: string, sortField: CarSort): { v: Date | number; id: Types.ObjectId } {
+	try {
+		const c: Cursor = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+		const v = sortField === CarSort.CREATED_AT ? new Date(c.v) : Number(c.v);
+		return { v, id: new Types.ObjectId(c.id) };
+	} catch {
+		throw new BadRequestException('Invalid cursor');
+	}
+}
+
+function range(r?: NumberRange) {
+	if (!r || (r.start === undefined && r.end === undefined)) return undefined;
+	const q: Record<string, number> = {};
+	if (r.start !== undefined) q.$gte = r.start;
+	if (r.end !== undefined) q.$lte = r.end;
+	return q;
+}
+
+/** Builds the full aggregation for getCars. Service calls: model.aggregate(pipeline), then toPage(). */
+export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
+	const sortField = input.sort ?? CarSort.CREATED_AT;
+	const dir = input.direction ?? Direction.DESC;
+	const s = input.search ?? {};
+
+	const match: Record<string, any> = { carStatus: CarStatus.ACTIVE }; // public list = ACTIVE only
+	if (s.text) match.$text = { $search: s.text }; // must be in the FIRST $match stage
+	if (s.agentId) match.memberId = new Types.ObjectId(s.agentId);
+	if (s.brandList?.length) match.carBrand = { $in: s.brandList };
+	if (s.modelList?.length) match.carModel = { $in: s.modelList };
+	if (s.typeList?.length) match.carType = { $in: s.typeList };
+	if (s.colorList?.length) match.carColor = { $in: s.colorList };
+	if (s.locationList?.length) match.carLocation = { $in: s.locationList };
+	if (s.conditionList?.length) match.carCondition = { $in: s.conditionList };
+	if (s.fuelList?.length) match.carFuelType = { $in: s.fuelList };
+	if (s.transmissionList?.length) match.carTransmission = { $in: s.transmissionList };
+	if (s.optionList?.length) match.carOptions = { $all: s.optionList };
+	if (s.market === CarMarket.DOMESTIC) match.carMarket = { $in: [CarMarket.DOMESTIC, CarMarket.BOTH] };
+	if (s.market === CarMarket.EXPORT) match.carMarket = { $in: [CarMarket.EXPORT, CarMarket.BOTH] };
+	if (s.market === CarMarket.BOTH) match.carMarket = CarMarket.BOTH;
+	if (range(s.priceRange)) match.carPrice = range(s.priceRange);
+	if (range(s.priceUsdRange)) match.carPriceUsd = range(s.priceUsdRange);
+	if (range(s.mileageRange)) match.carMileage = range(s.mileageRange);
+	if (range(s.yearRange)) match.carYear = range(s.yearRange);
+	if (s.barter) match.carBarter = true;
+	if (s.rent) match.carRent = true;
+	if (s.testDrive) match.carTestDrive = true;
+
+	// Sorting by a price means comparing cars that HAVE that price. Otherwise export-only cars
+	// (no KRW price) would all sit at the top of "lowest KRW price" as if they were free.
+	if (sortField === CarSort.PRICE) match.carPrice = { ...(match.carPrice ?? {}), $exists: true };
+	if (sortField === CarSort.PRICE_USD) match.carPriceUsd = { ...(match.carPriceUsd ?? {}), $exists: true };
+
+	// cursor: continue after the last car of the previous page. _id breaks ties
+	// (many cars have the same likes / price), otherwise cars get skipped or repeated.
+	if (input.cursor) {
+		const c = decodeCursor(input.cursor, sortField);
+		const op = dir === Direction.DESC ? '$lt' : '$gt';
+		match.$or = [{ [sortField]: { [op]: c.v } }, { [sortField]: c.v, _id: { [op]: c.id } }];
+	}
+
+	return [
+		{ $match: match },
+		{ $sort: { [sortField]: dir, _id: dir } },
+		{ $limit: input.limit + 1 }, // +1 tells us whether a next page exists
+		{
+			$lookup: {
+				from: 'members',
+				localField: 'memberId',
+				foreignField: '_id',
+				as: 'agentData',
+				pipeline: [
+					{
+						$project: {
+							memberNick: 1, memberImage: 1, agentCompany: 1, memberRank: 1,
+							contactPhone: 1, contactEmail: 1, contactTelegram: 1, contactWhatsapp: 1, contactKakao: 1,
+						},
+					},
+				],
+			},
+		},
+		{ $unwind: { path: '$agentData', preserveNullAndEmptyArrays: true } },
+	];
+}
+
+export function toPage<T extends Record<string, any>>(docs: T[], input: CarsInquiry) {
+	const hasMore = docs.length > input.limit;
+	const list = hasMore ? docs.slice(0, input.limit) : docs;
+	const sortField = input.sort ?? CarSort.CREATED_AT;
+	return { list, nextCursor: hasMore ? encodeCursor(sortField, list[list.length - 1]) : null };
+}
