@@ -51,6 +51,7 @@ export enum Message {
 	CAR_REMOVE_ONLY_DELETED = 'Only deleted cars can be removed permanently. Delete the car first.',
 	CAR_HOLD_ONLY_LISTED = 'Only listed (active or paused) cars can be put on hold.',
 	SELF_LIKE_DENIED = 'You cannot like yourself.',
+	OWN_CONTENT_LIKE_DENIED = 'You cannot like your own car or article.',
 	LIKE_BLOCKED = 'You are not allowed to like this (blocked by the owner).',
 	COMMENT_BLOCKED = 'You are not allowed to comment here (blocked by the owner).',
 	ARTICLE_REMOVE_ONLY_DELETED = 'Only deleted articles can be removed permanently. Delete the article first.',

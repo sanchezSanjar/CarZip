@@ -2,21 +2,27 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import CarSchema from '../../schemas/Car.model';
 import MemberSchema from '../../schemas/Member.model';
+import BlockSchema from '../../schemas/Block.model';
 import { CarService } from './car.service';
 import { CarResolver } from './car.resolver';
 import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../upload/upload.module';
 import { ViewModule } from '../view/view.module';
+import { LikeModule } from '../like/like.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
 	imports: [
 		MongooseModule.forFeature([
 			{ name: 'Car', schema: CarSchema },
 			{ name: 'Member', schema: MemberSchema }, // memberCars counter
+			{ name: 'Block', schema: BlockSchema }, // personal blocks stop likes
 		]),
 		AuthModule, // RolesGuard
 		UploadModule, // "is this photo one of our uploads?"
 		ViewModule, // carViews
+		LikeModule, // carLikes
+		NotificationModule, // LIKE notification to the dealer
 	],
 	providers: [CarService, CarResolver],
 	exports: [CarService], // admin moderation in MemberService

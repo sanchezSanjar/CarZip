@@ -28,17 +28,17 @@ export class NotificationService {
 	/**
 	 * Like notify(), but only the first time: the same author, receiver, type and item never notify twice.
 	 * For likes: like -> un-like -> like (or a tap-happy user) must not flood the receiver.
+	 * Only for notification types covered by the unique index in Notification.model.ts (LIKE).
 	 */
 	public async notifyOnce(input: NotificationInput): Promise<void> {
-		const { notificationType, authorId, receiverId, carId, articleId } = input;
-		const same = { notificationType, authorId, receiverId, carId: carId ?? null, articleId: articleId ?? null };
+		// no "check, then insert": two parallel taps would both pass the check. The unique index on
+		// LIKE notifications (Notification.model.ts) refuses the second insert atomically instead.
 		try {
-			if (await this.notificationModel.exists(same)) return;
+			await this.notificationModel.create(input);
 		} catch (err: any) {
-			this.logger.error(`${notificationType} -> ${receiverId} check failed: ${err?.message ?? err}`);
-			return;
+			if (err?.code === 11000) return; // already notified once: that's the point
+			this.logger.error(`${input.notificationType} -> ${input.receiverId} failed: ${err?.message ?? err}`);
 		}
-		await this.notify(input);
 	}
 
 	/** one notification per ACTIVE admin, e.g. "a new agent is waiting for review" */

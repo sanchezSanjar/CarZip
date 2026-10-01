@@ -10,6 +10,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { WithoutGuard } from '../auth/guards/without.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 
@@ -74,6 +75,13 @@ export class CarResolver {
 	@Mutation(() => Car)
 	public async removeCarByAdmin(@Args('carId') carId: string): Promise<Car> {
 		return this.carService.removeCarByAdmin(shapeIntoMongoObjectId(carId));
+	}
+
+	// like / un-like a car (toggle): any logged-in member, except the car's own dealer
+	@UseGuards(AuthGuard)
+	@Mutation(() => Car)
+	public async likeTargetCar(@Args('carId') carId: string, @AuthMember('_id') memberId: Types.ObjectId): Promise<Car> {
+		return this.carService.likeTargetCar(memberId, shapeIntoMongoObjectId(carId));
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view

@@ -19,6 +19,10 @@ import { UploadTarget } from '../../libs/enums/upload.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { UploadService } from '../upload/upload.service';
 import { ViewService } from '../view/view.service';
+import { LikeService } from '../like/like.service';
+import { NotificationService } from '../notification/notification.service';
+import { LikeGroup } from '../../libs/enums/like.enum';
+import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Direction } from '../../libs/enums/common.enum';
@@ -39,6 +43,9 @@ export class CarService {
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private readonly uploadService: UploadService,
 		private readonly viewService: ViewService,
+		private readonly likeService: LikeService,
+		private readonly notificationService: NotificationService,
+		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 	) {}
 
 	/**
@@ -191,6 +198,45 @@ export class CarService {
 		// agent contact buttons on the car page. A plain read: no profile view is counted for the agent
 		const agent = await this.memberModel.findById(car.memberId).select(AGENT_PUBLIC_FIELDS).lean<AgentPublic>().exec();
 		return { ...car, agentData: agent ?? undefined };
+	}
+
+	/**
+	 * Like / un-like a car (toggle), Search & Engage flowchart: ACTIVE cars only, the dealer's PERSONAL
+	 * block stops the blocked member, carLikes follows the real likes, and the dealer gets ONE
+	 * LIKE notification per liker. Dealers can't like their own cars.
+	 */
+	public async likeTargetCar(memberId: Types.ObjectId, carId: Types.ObjectId): Promise<Car> {
+		const car = await this.carModel
+			.findOne({ _id: carId, carStatus: CarStatus.ACTIVE })
+			.select('memberId carTitle')
+			.lean<Car>()
+			.exec();
+		if (!car) throw new NotFoundException(Message.NO_DATA_FOUND);
+		const ownerId = new Types.ObjectId(String(car.memberId));
+		if (ownerId.equals(memberId)) throw new BadRequestException(Message.OWN_CONTENT_LIKE_DENIED);
+		if (await this.blockModel.exists({ blockerId: ownerId, blockedId: memberId })) {
+			throw new ForbiddenException(Message.LIKE_BLOCKED);
+		}
+
+		const modifier = await this.likeService.toggleLike({ memberId, likeRefId: carId, likeGroup: LikeGroup.CAR });
+		const updated = await this.carModel
+			.findByIdAndUpdate(carId, { $inc: { carLikes: modifier } }, { new: true })
+			.lean<Car>()
+			.exec();
+		if (!updated) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		if (modifier === 1) {
+			await this.notificationService.notifyOnce({
+				notificationType: NotificationType.LIKE,
+				notificationGroup: NotificationGroup.CAR,
+				notificationTitle: `Someone liked your car "${car.carTitle}"`,
+				authorId: memberId,
+				receiverId: ownerId,
+				carId,
+			});
+		}
+		const agent = await this.memberModel.findById(ownerId).select(AGENT_PUBLIC_FIELDS).lean<AgentPublic>().exec();
+		return { ...updated, agentData: agent ?? undefined };
 	}
 
 	/**
