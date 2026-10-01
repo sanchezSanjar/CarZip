@@ -5,7 +5,10 @@ import { BoardArticleCategory, BoardArticleStatus } from '../../enums/board-arti
 import { Direction } from '../../enums/common.enum';
 import { availableBoardArticleSorts } from '../../config';
 
-/** createBoardArticle input. The author (memberId) always comes from the JWT, never from the client. */
+/**
+ * createBoardArticle input: AGENTs and ADMINs write articles (USERs can't).
+ * The author (memberId) always comes from the JWT, never from the client.
+ */
 @InputType()
 export class BoardArticleInput {
 	@IsIn(Object.values(BoardArticleCategory))

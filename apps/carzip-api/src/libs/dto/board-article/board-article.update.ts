@@ -3,8 +3,10 @@ import { IsIn, IsMongoId, IsOptional, IsUrl, Length } from 'class-validator';
 import { BoardArticleStatus } from '../../enums/board-article.enum';
 
 /**
- * updateBoardArticle input: the author edits their OWN article, or deletes it (articleStatus: DELETE).
- * A deleted article can't be brought back by its author; admin moderation has its own input.
+ * updateBoardArticle input: edit an article, or delete it (articleStatus: DELETE).
+ * - AGENT: only their OWN articles
+ * - ADMIN: ANY article (their own and agents')
+ * A deleted article can't be brought back here; restoring is admin moderation.
  */
 @InputType()
 export class BoardArticleUpdate {

@@ -18,7 +18,7 @@ export class BoardArticle {
 	@Field(() => Date) createdAt: Date;
 	@Field(() => Date) updatedAt: Date;
 
-	/** the author (always an agent: only agents write articles), PUBLIC fields only */
+	/** the author (an agent or an admin), PUBLIC fields only. agentCompany is empty for admins. */
 	@Field(() => AgentPublic, { nullable: true }) memberData?: AgentPublic;
 }
 
