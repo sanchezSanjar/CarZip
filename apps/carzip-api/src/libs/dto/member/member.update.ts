@@ -1,5 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsEmail, IsOptional, Length, Matches, ValidateIf } from 'class-validator';
+import { IsEmail, IsIn, IsMongoId, IsNotEmpty, IsOptional, Length, Matches, ValidateIf } from 'class-validator';
+import { MemberStatus, MemberType } from '../../enums/member.enum';
 import { CONTACT_PHONE_REGEX, NICK_REGEX } from './member.input';
 
 /**
@@ -64,4 +65,35 @@ export class MemberUpdate {
 	@Length(2, 50)
 	@Field(() => String, { nullable: true })
 	contactKakao?: string;
+}
+
+/**
+ * updateMemberByAdmin input: moderation only (Admin flowchart).
+ * - ACTIVE: approve an agent application, unblock, or restore a deleted member
+ * - REJECTED: reject an agent application, agentRejectReason required (shown to the agent at login)
+ * - BLOCK: global block, effective on the member's next request
+ * - DELETE: soft delete (deletedAt)
+ * Never: PENDING (only signup sets it), ADMIN type (admins are created by hand), passwords.
+ */
+@InputType()
+export class MemberUpdateByAdmin {
+	@IsMongoId()
+	@Field(() => String)
+	_id: string;
+
+	@IsOptional()
+	@IsIn([MemberType.USER, MemberType.AGENT])
+	@Field(() => MemberType, { nullable: true })
+	memberType?: MemberType;
+
+	@IsOptional()
+	@IsIn([MemberStatus.ACTIVE, MemberStatus.REJECTED, MemberStatus.BLOCK, MemberStatus.DELETE])
+	@Field(() => MemberStatus, { nullable: true })
+	memberStatus?: MemberStatus;
+
+	@ValidateIf((o: MemberUpdateByAdmin) => o.memberStatus === MemberStatus.REJECTED)
+	@Length(5, 300)
+	@IsNotEmpty({ message: 'Give the agent a reason for the rejection' })
+	@Field(() => String, { nullable: true })
+	agentRejectReason?: string;
 }

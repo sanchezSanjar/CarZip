@@ -12,6 +12,17 @@ export const shapeIntoMongoObjectId = (target: string | Types.ObjectId): Types.O
 /** what getAgents may be sorted by: only indexed / counter fields, never anything private */
 export const availableAgentSorts = ['createdAt', 'updatedAt', 'memberCars', 'memberLikes', 'memberViews', 'memberRank'];
 
+/** what getAllMembersByAdmin may be sorted by */
+export const availableMemberSorts = [
+	'createdAt',
+	'updatedAt',
+	'memberCars',
+	'memberLikes',
+	'memberViews',
+	'memberRank',
+	'memberWarnings',
+];
+
 /**
  * User text -> a regex that matches it LITERALLY. Never pass search text straight into new RegExp():
  * a crafted pattern like "(a+)+$" can freeze the database (ReDoS), and "." or "*" would change the meaning.

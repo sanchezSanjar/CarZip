@@ -7,13 +7,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { AgentsInquiry, LoginInput, MemberInput } from '../../libs/dto/member/member.input';
-import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../libs/dto/member/member.input';
+import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
 import { Member, Members } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
-import { escapeRegex } from '../../libs/config';
+import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
@@ -45,6 +45,9 @@ const PRIVATE_FIELDS = [
 const PUBLIC_LIST_PROJECTION = Object.fromEntries(
 	['memberPassword', 'passwordChangedAt', ...PRIVATE_FIELDS].map((key) => [key, 0]),
 );
+
+// admins see private fields, but never secrets
+const ADMIN_LIST_PROJECTION = { memberPassword: 0, passwordChangedAt: 0 };
 
 const AGENT_ONLY_FIELDS = [
 	'agentCompany',
@@ -228,12 +231,84 @@ export class MemberService {
 
 	/** ADMIN */
 
-	public async getAllMembersByAdmin(): Promise<string> {
-		return 'getAllMembersByAdmin executed';
+	public async getAllMembersByAdmin(input: MembersInquiry): Promise<Members> {
+		const { memberStatus, memberType, text } = input.search ?? {};
+		const match: Record<string, unknown> = {};
+		if (memberStatus) match.memberStatus = memberStatus;
+		if (memberType) match.memberType = memberType;
+		if (text?.trim()) {
+			const pattern = new RegExp(escapeRegex(text.trim()), 'i');
+			match.$or = [{ memberNick: pattern }, { agentCompany: pattern }, { memberPhone: pattern }];
+		}
+		const direction = input.direction ?? Direction.DESC;
+		const sort: Record<string, Direction> = { [input.sort ?? 'createdAt']: direction, _id: direction };
+
+		const [result] = await this.memberModel
+			.aggregate<Members>([
+				{ $match: match },
+				{ $sort: sort },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{ $project: ADMIN_LIST_PROJECTION },
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
 	}
 
-	public async updateMemberByAdmin(): Promise<string> {
-		return 'updateMemberByAdmin executed';
+	/** moderation (Admin flowchart): approve / reject agents, global block, delete, restore */
+	public async updateMemberByAdmin(admin: AuthMemberData, input: MemberUpdateByAdmin): Promise<Member> {
+		const targetId = shapeIntoMongoObjectId(input._id);
+		if (admin._id.equals(targetId)) throw new ForbiddenException(Message.ADMIN_CANNOT_UPDATE_SELF);
+
+		const target = await this.memberModel.findById(targetId).lean<Member>().exec();
+		if (!target) throw new NotFoundException(Message.NO_DATA_FOUND);
+		if (target.memberType === MemberType.ADMIN) throw new ForbiddenException(Message.ADMIN_CANNOT_UPDATE_ADMIN);
+
+		const $set: Record<string, unknown> = {};
+		const $unset: Record<string, ''> = {};
+		const finalType = input.memberType ?? target.memberType;
+		if (input.memberType) $set.memberType = input.memberType;
+
+		switch (input.memberStatus) {
+			case MemberStatus.ACTIVE:
+				$set.memberStatus = MemberStatus.ACTIVE;
+				$unset.deletedAt = ''; // restoring a deleted member
+				if (finalType === MemberType.AGENT && !target.agentApprovedAt) {
+					$set.agentApprovedAt = new Date(); // agent application approved
+					$unset.agentRejectReason = '';
+				}
+				break;
+			case MemberStatus.REJECTED:
+				if (finalType !== MemberType.AGENT) throw new BadRequestException(Message.ONLY_AGENT_CAN_BE_REJECTED);
+				$set.memberStatus = MemberStatus.REJECTED;
+				$set.agentRejectReason = input.agentRejectReason;
+				break;
+			case MemberStatus.BLOCK:
+				$set.memberStatus = MemberStatus.BLOCK; // AuthGuard reads status from the DB: blocked on the next request
+				break;
+			case MemberStatus.DELETE:
+				$set.memberStatus = MemberStatus.DELETE;
+				$set.deletedAt = new Date();
+				break;
+		}
+		if (!Object.keys($set).length) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+
+		const updated = await this.memberModel
+			.findOneAndUpdate({ _id: targetId }, { $set, $unset }, { new: true })
+			.lean<Member>()
+			.exec();
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+
+		// TODO(notification module): AGENT_APPROVED / AGENT_REJECTED notification to the agent
+		// TODO(car module): agent BLOCK / DELETE -> their cars HOLD / DELETE
+		return updated;
 	}
 
 	/** MongoDB duplicate key (code 11000) on a unique index -> readable message */

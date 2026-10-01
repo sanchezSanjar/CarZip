@@ -36,4 +36,7 @@ export enum Message {
 	NOTHING_TO_UPDATE = 'Nothing to update.',
 	NO_DATA_FOUND = 'No data found!',
 	INVALID_ID = 'Invalid id!',
+	ADMIN_CANNOT_UPDATE_SELF = 'Admins cannot change their own account here.',
+	ADMIN_CANNOT_UPDATE_ADMIN = 'Admin accounts cannot be changed here.',
+	ONLY_AGENT_CAN_BE_REJECTED = 'Only agent applications can be rejected.',
 }

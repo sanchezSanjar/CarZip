@@ -1,8 +1,8 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsUrl, Length, Matches, Max, Min, ValidateIf } from 'class-validator';
-import { MemberAuthType, MemberType } from '../../enums/member.enum';
+import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
-import { availableAgentSorts } from '../../config';
+import { availableAgentSorts, availableMemberSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
@@ -156,4 +156,53 @@ export class AgentsInquiry {
 	@IsOptional()
 	@Field(() => AISearch, { nullable: true })
 	search?: AISearch;
+}
+
+@InputType()
+class MISearch {
+	@IsOptional()
+	@IsIn(Object.values(MemberStatus))
+	@Field(() => MemberStatus, { nullable: true })
+	memberStatus?: MemberStatus;
+
+	@IsOptional()
+	@IsIn(Object.values(MemberType))
+	@Field(() => MemberType, { nullable: true })
+	memberType?: MemberType;
+
+	/** matches nick, company or phone, case-insensitive */
+	@IsOptional()
+	@Length(1, 50)
+	@Field(() => String, { nullable: true })
+	text?: string;
+}
+
+/**
+ * getAllMembersByAdmin input. "Agent applications, oldest first" =
+ * { search: { memberType: AGENT, memberStatus: PENDING }, sort: "createdAt", direction: ASC }
+ */
+@InputType()
+export class MembersInquiry {
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(availableMemberSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+
+	@IsOptional()
+	@IsIn([Direction.ASC, Direction.DESC])
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
+
+	@IsOptional()
+	@Field(() => MISearch, { nullable: true })
+	search?: MISearch;
 }
