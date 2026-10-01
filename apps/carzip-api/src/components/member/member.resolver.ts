@@ -9,6 +9,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { AuthMemberData } from '../../libs/types/auth';
 
 @Resolver()
 export class MemberResolver {
@@ -29,6 +30,14 @@ export class MemberResolver {
 	@Query(() => String)
 	public checkAuth(@AuthMember('memberNick') memberNick: string): string {
 		return `Hi ${memberNick}`;
+	}
+
+	// Authorization check
+	@Roles(MemberType.USER, MemberType.AGENT)
+	@UseGuards(RolesGuard)
+	@Query(() => String)
+	public checkAuthRoles(@AuthMember() authMember: AuthMemberData): string {
+		return `Hi ${authMember.memberNick}, you are ${authMember.memberType}`;
 	}
 
 	// Authenticated
