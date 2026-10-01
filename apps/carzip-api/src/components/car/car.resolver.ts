@@ -69,6 +69,13 @@ export class CarResolver {
 		return this.carService.updateCarByAdmin(input);
 	}
 
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Car)
+	public async removeCarByAdmin(@Args('carId') carId: string): Promise<Car> {
+		return this.carService.removeCarByAdmin(shapeIntoMongoObjectId(carId));
+	}
+
 	// Public car detail: guests read it, logged-in viewers also count a view
 	@UseGuards(WithoutGuard)
 	@Query(() => Car)

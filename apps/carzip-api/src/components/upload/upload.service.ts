@@ -68,6 +68,24 @@ export class UploadService {
 		return this.storage.isOwnUrl(url, target);
 	}
 
+	/**
+	 * Deletes uploaded images (main + thumbnail) for good, e.g. when a car is removed permanently.
+	 * Only our own uploads are touched: any other URL is skipped. Returns how many images were removed.
+	 */
+	public async removeImages(urls: string[], target: UploadTarget): Promise<number> {
+		const own = urls.filter((url) => this.storage.isOwnUrl(url, target));
+		await Promise.all(
+			own.map((url) => {
+				const name = url.slice(url.lastIndexOf('/') + 1); // <uuid>.webp, checked by isOwnUrl
+				return Promise.all([
+					this.storage.delete(`${target}/${name}`),
+					this.storage.delete(`${target}/${name.replace('.webp', '_thumb.webp')}`),
+				]);
+			}),
+		);
+		return own.length;
+	}
+
 	private async process(buffer: Buffer, target: UploadTarget): Promise<ProcessedImage> {
 		let format: string | undefined;
 		try {

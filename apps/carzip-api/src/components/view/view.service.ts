@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { View } from '../../libs/dto/view/view';
 import { ViewInput } from '../../libs/dto/view/view.input';
 
@@ -22,5 +22,10 @@ export class ViewService {
 			{ upsert: true },
 		);
 		return result.upsertedCount === 1;
+	}
+
+	/** the item itself is gone for good (car removed permanently): its view records go too */
+	public async removeViews(viewRefId: Types.ObjectId): Promise<number> {
+		return (await this.viewModel.deleteMany({ viewRefId })).deletedCount;
 	}
 }

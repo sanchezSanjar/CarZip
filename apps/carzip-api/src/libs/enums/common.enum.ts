@@ -46,6 +46,7 @@ export enum Message {
 	CAR_IMAGES_AGENT_ONLY = 'Only agents can upload car photos.',
 	CAR_SOLD_FINAL = 'A sold car cannot be changed.',
 	CAR_HELD_BY_ADMIN = 'An admin put this car on hold',
+	CAR_REMOVE_ONLY_DELETED = 'Only deleted cars can be removed permanently. Delete the car first.',
 	CAR_HOLD_ONLY_LISTED = 'Only listed (active or paused) cars can be put on hold.',
 	CAR_IMAGES_NOT_UPLOADED = 'Car photos must be uploaded through CarZip first (POST /upload/images).',
 }

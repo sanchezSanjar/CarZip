@@ -304,6 +304,30 @@ export class CarService {
 	}
 
 	/**
+	 * ADMIN: remove a car FOR GOOD (spam, illegal listing). Step 2 after updateCarByAdmin DELETE:
+	 * only an already-deleted car can be removed, so nothing disappears by one wrong click.
+	 * memberCars already went down at the delete. Its photos and view records are removed with it.
+	 */
+	public async removeCarByAdmin(carId: Types.ObjectId): Promise<Car> {
+		const removed = await this.carModel
+			.findOneAndDelete({ _id: carId, carStatus: CarStatus.DELETE })
+			.lean<Car>()
+			.exec();
+		if (!removed) {
+			const exists = await this.carModel.exists({ _id: carId });
+			if (exists) throw new BadRequestException(Message.CAR_REMOVE_ONLY_DELETED);
+			throw new NotFoundException(Message.NO_DATA_FOUND);
+		}
+
+		await Promise.all([
+			this.uploadService.removeImages(removed.carImages, UploadTarget.CAR),
+			this.viewService.removeViews(carId),
+		]);
+		// TODO(like / comment / test-drive / notification modules): remove their records of this car too
+		return removed;
+	}
+
+	/**
 	 * Admin blocked the agent: hide their ACTIVE cars from search. HOLD keeps memberCars unchanged
 	 * (Car Listing flowchart). After an unblock the agent re-activates the cars they still want to sell.
 	 * Returns how many cars were put on HOLD.
