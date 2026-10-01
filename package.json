@@ -49,6 +49,7 @@
     "mongoose": "^8.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "solapi": "^6.0.1",
     "ts-morph": "^27.0.2",
     "uuid": "^14.0.2",
     "ws": "^8.14.2"

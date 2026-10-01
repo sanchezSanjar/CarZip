@@ -21,4 +21,5 @@ export enum Message {
 	AGENT_UNDER_REVIEW = 'Your agent account is under review. Usually within 24 hours.',
 	AGENT_REJECTED = 'Your agent application was rejected',
 	ACCOUNT_UNAVAILABLE = 'This account is no longer available.',
+	SMS_FAILED = 'Could not send SMS. Please try again later.',
 }
