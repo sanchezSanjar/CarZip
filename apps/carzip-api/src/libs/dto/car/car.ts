@@ -79,9 +79,9 @@ export class Cars {
 	@Field(() => String, { nullable: true }) nextCursor?: string | null;
 }
 
-/** a page of the agent's own cars. metaCounter[0].total = how many in total (for page numbers / tab counts) */
+/** a page of cars with a total: getAgentCars ("my cars") and getAllCarsByAdmin. metaCounter[0].total = how many in total */
 @ObjectType()
-export class AgentCars {
+export class CarsPage {
 	@Field(() => [Car]) list: Car[];
 	@Field(() => [TotalCounter], { nullable: true }) metaCounter?: TotalCounter[];
 }

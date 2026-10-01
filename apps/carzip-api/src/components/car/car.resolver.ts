@@ -2,8 +2,8 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
-import { AgentCars, Car, Cars } from '../../libs/dto/car/car';
-import { AgentCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { Car, Cars, CarsPage } from '../../libs/dto/car/car';
+import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -45,12 +45,21 @@ export class CarResolver {
 	// "My cars" dashboard: always the logged-in agent's own cars
 	@Roles(MemberType.AGENT)
 	@UseGuards(RolesGuard)
-	@Query(() => AgentCars)
+	@Query(() => CarsPage)
 	public async getAgentCars(
 		@Args('input') input: AgentCarsInquiry,
 		@AuthMember('_id') memberId: Types.ObjectId,
-	): Promise<AgentCars> {
+	): Promise<CarsPage> {
 		return this.carService.getAgentCars(memberId, input);
+	}
+
+	/** ADMIN */
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Query(() => CarsPage)
+	public async getAllCarsByAdmin(@Args('input') input: AllCarsInquiry): Promise<CarsPage> {
+		return this.carService.getAllCarsByAdmin(input);
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view

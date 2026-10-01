@@ -46,6 +46,37 @@ function range(r?: NumberRange) {
 	return q;
 }
 
+/**
+ * Attaches the car's agent as agentData with PUBLIC fields only (= AgentPublic).
+ * A plain $lookup would copy the whole member, password hash included: aggregate() ignores select: false.
+ */
+export const lookupAgentData: PipelineStage.FacetPipelineStage[] = [
+	{
+		$lookup: {
+			from: 'members',
+			localField: 'memberId',
+			foreignField: '_id',
+			as: 'agentData',
+			pipeline: [
+				{
+					$project: {
+						memberNick: 1,
+						memberImage: 1,
+						agentCompany: 1,
+						memberRank: 1,
+						contactPhone: 1,
+						contactEmail: 1,
+						contactTelegram: 1,
+						contactWhatsapp: 1,
+						contactKakao: 1,
+					},
+				},
+			],
+		},
+	},
+	{ $unwind: { path: '$agentData', preserveNullAndEmptyArrays: true } },
+];
+
 /** Builds the full aggregation for getCars. Service calls: model.aggregate(pipeline), then toPage(). */
 export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
 	const sortField = input.sort ?? CarSort.CREATED_AT;
@@ -92,30 +123,7 @@ export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
 		{ $match: match },
 		{ $sort: { [sortField]: dir, _id: dir } },
 		{ $limit: input.limit + 1 }, // +1 tells us whether a next page exists
-		{
-			$lookup: {
-				from: 'members',
-				localField: 'memberId',
-				foreignField: '_id',
-				as: 'agentData',
-				pipeline: [
-					{
-						$project: {
-							memberNick: 1,
-							memberImage: 1,
-							agentCompany: 1,
-							memberRank: 1,
-							contactPhone: 1,
-							contactEmail: 1,
-							contactTelegram: 1,
-							contactWhatsapp: 1,
-							contactKakao: 1,
-						},
-					},
-				],
-			},
-		},
-		{ $unwind: { path: '$agentData', preserveNullAndEmptyArrays: true } },
+		...lookupAgentData,
 	];
 }
 

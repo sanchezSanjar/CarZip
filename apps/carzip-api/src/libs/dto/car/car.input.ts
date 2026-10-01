@@ -353,3 +353,54 @@ export class AgentCarsInquiry {
 	@Field(() => ACSearch, { nullable: true })
 	search?: ACSearch;
 }
+
+@InputType()
+class ALCSearch {
+	/** any status, DELETE included: admins moderate everything */
+	@IsOptional()
+	@IsIn(Object.values(CarStatus))
+	@Field(() => CarStatus, { nullable: true })
+	carStatus?: CarStatus;
+
+	@IsOptional()
+	@IsIn(Object.values(CarLocation), { each: true })
+	@Field(() => [CarLocation], { nullable: true })
+	locationList?: CarLocation[];
+
+	/** one dealer's cars, e.g. while reviewing a report about them */
+	@IsOptional()
+	@IsMongoId()
+	@Field(() => String, { nullable: true })
+	agentId?: string;
+}
+
+/** getAllCarsByAdmin input (Admin flowchart, "Cars" section): every car, page-based */
+@InputType()
+export class AllCarsInquiry {
+	@IsInt()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(Object.values(CarSort))
+	@Field(() => CarSort, { nullable: true, defaultValue: CarSort.CREATED_AT })
+	sort?: CarSort;
+
+	@IsOptional()
+	@IsIn([Direction.ASC, Direction.DESC])
+	@Field(() => Direction, { nullable: true, defaultValue: Direction.DESC })
+	direction?: Direction;
+
+	@IsOptional()
+	@ValidateNested() // without it nothing inside search is validated
+	@Type(() => ALCSearch)
+	@Field(() => ALCSearch, { nullable: true })
+	search?: ALCSearch;
+}

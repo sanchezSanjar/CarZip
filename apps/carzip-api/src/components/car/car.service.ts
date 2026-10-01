@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Error as MongooseError, Model, Types } from 'mongoose';
-import { AgentCars, AgentPublic, Car, Cars } from '../../libs/dto/car/car';
-import { AgentCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { AgentPublic, Car, Cars, CarsPage } from '../../libs/dto/car/car';
+import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -23,7 +23,7 @@ import { MemberType } from '../../libs/enums/member.enum';
 import { Direction } from '../../libs/enums/common.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
-import { buildCarsPipeline, toPage } from '../../libs/utils/car-query';
+import { buildCarsPipeline, lookupAgentData, toPage } from '../../libs/utils/car-query';
 
 // what a car page shows about its agent (= AgentPublic). Verification data is never selected.
 const AGENT_PUBLIC_FIELDS =
@@ -202,7 +202,7 @@ export class CarService {
 	 * "My cars" dashboard: only the logged-in agent's cars (memberId from the JWT), ACTIVE + HOLD + SOLD
 	 * or one of them. DELETE is never listed. Page numbers + total, for tabs like "Paused (3)".
 	 */
-	public async getAgentCars(memberId: Types.ObjectId, input: AgentCarsInquiry): Promise<AgentCars> {
+	public async getAgentCars(memberId: Types.ObjectId, input: AgentCarsInquiry): Promise<CarsPage> {
 		const status = input.search?.carStatus;
 		const match = { memberId, carStatus: status ?? { $ne: CarStatus.DELETE } };
 		const direction = input.direction ?? Direction.DESC;
@@ -210,12 +210,37 @@ export class CarService {
 		const sort: Record<string, Direction> = { [input.sort ?? CarSort.CREATED_AT]: direction, _id: direction };
 
 		const [result] = await this.carModel
-			.aggregate<AgentCars>([
+			.aggregate<CarsPage>([
 				{ $match: match },
 				{ $sort: sort },
 				{
 					$facet: {
 						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/** ADMIN: every car in any status (Admin flowchart, "Cars" section), with the agent's public data */
+	public async getAllCarsByAdmin(input: AllCarsInquiry): Promise<CarsPage> {
+		const { carStatus, locationList, agentId } = input.search ?? {};
+		const match: Record<string, unknown> = {};
+		if (carStatus) match.carStatus = carStatus;
+		if (locationList?.length) match.carLocation = { $in: locationList };
+		if (agentId) match.memberId = shapeIntoMongoObjectId(agentId);
+		const direction = input.direction ?? Direction.DESC;
+		const sort: Record<string, Direction> = { [input.sort ?? CarSort.CREATED_AT]: direction, _id: direction };
+
+		const [result] = await this.carModel
+			.aggregate<CarsPage>([
+				{ $match: match },
+				{ $sort: sort },
+				{
+					$facet: {
+						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }, ...lookupAgentData],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},
