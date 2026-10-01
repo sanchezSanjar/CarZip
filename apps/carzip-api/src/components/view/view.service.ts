@@ -24,7 +24,7 @@ export class ViewService {
 		return result.upsertedCount === 1;
 	}
 
-	/** the item itself is gone for good (car removed permanently): its view records go too */
+	/** the item itself is gone for good (car / article removed permanently): its view records go too */
 	public async removeViews(viewRefId: Types.ObjectId): Promise<number> {
 		return (await this.viewModel.deleteMany({ viewRefId })).deletedCount;
 	}

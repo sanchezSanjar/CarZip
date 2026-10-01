@@ -3,8 +3,12 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { BoardArticleService } from './board-article.service';
 import { BoardArticle, BoardArticles } from '../../libs/dto/board-article/board-article';
-import { BoardArticleInput, BoardArticlesInquiry } from '../../libs/dto/board-article/board-article.input';
-import { BoardArticleUpdate } from '../../libs/dto/board-article/board-article.update';
+import {
+	AllBoardArticlesInquiry,
+	BoardArticleInput,
+	BoardArticlesInquiry,
+} from '../../libs/dto/board-article/board-article.input';
+import { BoardArticleUpdate, BoardArticleUpdateByAdmin } from '../../libs/dto/board-article/board-article.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
@@ -53,5 +57,28 @@ export class BoardArticleResolver {
 	@Query(() => BoardArticles)
 	public async getBoardArticles(@Args('input') input: BoardArticlesInquiry): Promise<BoardArticles> {
 		return this.boardArticleService.getBoardArticles(input);
+	}
+
+	/** ADMIN */
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Query(() => BoardArticles)
+	public async getAllBoardArticlesByAdmin(@Args('input') input: AllBoardArticlesInquiry): Promise<BoardArticles> {
+		return this.boardArticleService.getAllBoardArticlesByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => BoardArticle)
+	public async updateBoardArticleByAdmin(@Args('input') input: BoardArticleUpdateByAdmin): Promise<BoardArticle> {
+		return this.boardArticleService.updateBoardArticleByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => BoardArticle)
+	public async removeBoardArticleByAdmin(@Args('articleId') articleId: string): Promise<BoardArticle> {
+		return this.boardArticleService.removeBoardArticleByAdmin(shapeIntoMongoObjectId(articleId));
 	}
 }

@@ -8,8 +8,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { BoardArticle, BoardArticles } from '../../libs/dto/board-article/board-article';
-import { BoardArticleInput, BoardArticlesInquiry } from '../../libs/dto/board-article/board-article.input';
-import { BoardArticleUpdate } from '../../libs/dto/board-article/board-article.update';
+import {
+	AllBoardArticlesInquiry,
+	BoardArticleInput,
+	BoardArticlesInquiry,
+} from '../../libs/dto/board-article/board-article.input';
+import { BoardArticleUpdate, BoardArticleUpdateByAdmin } from '../../libs/dto/board-article/board-article.update';
 import { AgentPublic } from '../../libs/dto/car/car';
 import { Member } from '../../libs/dto/member/member';
 import { BoardArticleStatus } from '../../libs/enums/board-article.enum';
@@ -147,6 +151,86 @@ export class BoardArticleService {
 			])
 			.exec();
 		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/** ADMIN */
+
+	/** every article in any status (DELETE included), with each author's public data */
+	public async getAllBoardArticlesByAdmin(input: AllBoardArticlesInquiry): Promise<BoardArticles> {
+		const { articleStatus, articleCategory } = input.search ?? {};
+		const match: Record<string, unknown> = {};
+		if (articleStatus) match.articleStatus = articleStatus;
+		if (articleCategory) match.articleCategory = articleCategory;
+		const direction = input.direction ?? Direction.DESC;
+		const sort: Record<string, Direction> = { [input.sort ?? 'createdAt']: direction, _id: direction };
+
+		const [result] = await this.boardArticleModel
+			.aggregate<BoardArticles>([
+				{ $match: match },
+				{ $sort: sort },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							...lookupPublicMember('memberData'),
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/**
+	 * Status moderation: DELETE or RESTORE (ACTIVE). memberArticles counts the author's ACTIVE articles,
+	 * so it goes down on delete and back up on restore.
+	 */
+	public async updateBoardArticleByAdmin(input: BoardArticleUpdateByAdmin): Promise<BoardArticle> {
+		const articleId = shapeIntoMongoObjectId(input._id);
+		const article = await this.boardArticleModel.findById(articleId).lean<BoardArticle>().exec();
+		if (!article) throw new NotFoundException(Message.NO_DATA_FOUND);
+		if (article.articleStatus === input.articleStatus) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+
+		// only if the status didn't change meanwhile: the counter below can't run twice
+		const updated = await this.boardArticleModel
+			.findOneAndUpdate(
+				{ _id: articleId, articleStatus: article.articleStatus },
+				{ $set: { articleStatus: input.articleStatus } },
+				{ new: true },
+			)
+			.lean<BoardArticle>()
+			.exec();
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+
+		const modifier = input.articleStatus === BoardArticleStatus.DELETE ? -1 : 1;
+		await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: modifier } });
+		return updated;
+	}
+
+	/**
+	 * Remove an article FOR GOOD. Step 2 after a delete: only an already-deleted article can be removed,
+	 * so nothing disappears by one wrong click. Its image file and view records go with it.
+	 */
+	public async removeBoardArticleByAdmin(articleId: Types.ObjectId): Promise<BoardArticle> {
+		const removed = await this.boardArticleModel
+			.findOneAndDelete({ _id: articleId, articleStatus: BoardArticleStatus.DELETE })
+			.lean<BoardArticle>()
+			.exec();
+		if (!removed) {
+			if (await this.boardArticleModel.exists({ _id: articleId })) {
+				throw new BadRequestException(Message.ARTICLE_REMOVE_ONLY_DELETED);
+			}
+			throw new NotFoundException(Message.NO_DATA_FOUND);
+		}
+
+		await Promise.all([
+			removed.articleImage ? this.uploadService.removeImages([removed.articleImage], UploadTarget.ARTICLE) : 0,
+			this.viewService.removeViews(articleId),
+		]);
+		// TODO(like / comment modules): remove their records of this article too
+		return removed;
 	}
 
 	/** the article image must come from our upload API (POST /upload/image, target=article) */

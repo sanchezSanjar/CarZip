@@ -50,6 +50,7 @@ export enum Message {
 	CAR_HELD_BY_ADMIN = 'An admin put this car on hold',
 	CAR_REMOVE_ONLY_DELETED = 'Only deleted cars can be removed permanently. Delete the car first.',
 	CAR_HOLD_ONLY_LISTED = 'Only listed (active or paused) cars can be put on hold.',
+	ARTICLE_REMOVE_ONLY_DELETED = 'Only deleted articles can be removed permanently. Delete the article first.',
 	ARTICLE_IMAGES_NOT_ALLOWED = 'Only agents and admins can upload article images.',
 	ARTICLE_IMAGE_NOT_UPLOADED = 'The article image must be uploaded through CarZip first (POST /upload/image).',
 	CAR_IMAGES_NOT_UPLOADED = 'Car photos must be uploaded through CarZip first (POST /upload/images).',
