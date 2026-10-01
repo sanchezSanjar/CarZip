@@ -67,10 +67,10 @@ export class AuthService {
 			.lean<MemberAuthFields>()
 			.exec();
 
-		if (!member || member.memberStatus === MemberStatus.DELETE) {
-			throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
-		}
-		if (member.memberStatus === MemberStatus.BLOCK) throw new ForbiddenException(Message.BLOCKED_MEMBER);
+		// only ACTIVE members are logged in. PENDING / REJECTED agents never get a token,
+		// and a member who stops being ACTIVE loses access on the next request
+		if (member?.memberStatus === MemberStatus.BLOCK) throw new ForbiddenException(Message.BLOCKED_MEMBER);
+		if (member?.memberStatus !== MemberStatus.ACTIVE) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
 		// password was reset after this token was issued -> every old token stops working (iat is in seconds)
 		if (member.passwordChangedAt && Math.floor(member.passwordChangedAt.getTime() / 1000) > (payload.iat ?? 0)) {
 			throw new UnauthorizedException(Message.NOT_AUTHENTICATED);

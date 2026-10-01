@@ -14,6 +14,17 @@ const DUPLICATE_MESSAGES: Record<string, Message> = {
 	agentBusinessNo: Message.USED_BUSINESS_NO,
 };
 
+const AGENT_ONLY_FIELDS = [
+	'agentCompany',
+	'agentBusinessNo',
+	'agentBusinessCard',
+	'contactPhone',
+	'contactEmail',
+	'contactTelegram',
+	'contactWhatsapp',
+	'contactKakao',
+] as const;
+
 @Injectable()
 export class MemberService {
 	constructor(
@@ -33,10 +44,8 @@ export class MemberService {
 			agentBusinessNo: input.agentBusinessNo?.replace(/-/g, ''),
 		};
 		if (!isAgent) {
-			// a USER must not carry agent data, even if the client sent it
-			delete data.agentCompany;
-			delete data.agentBusinessNo;
-			delete data.agentBusinessCard;
+			// a USER must not carry agent data or public contacts, even if the client sent them
+			for (const key of AGENT_ONLY_FIELDS) delete data[key];
 		}
 
 		try {
@@ -44,7 +53,11 @@ export class MemberService {
 			// memberPassword has select: false for queries, but create() still returns it
 			const member: Member & { memberPassword?: string } = created.toObject();
 			delete member.memberPassword;
-			member.accessToken = await this.authService.createToken(member);
+			// USER -> logged in right away. AGENT -> PENDING, no token until an admin approves:
+			// the client shows "under review" from memberStatus
+			if (member.memberStatus === MemberStatus.ACTIVE) {
+				member.accessToken = await this.authService.createToken(member);
+			}
 			return member;
 		} catch (err: any) {
 			if (err?.code === 11000) {
@@ -57,23 +70,31 @@ export class MemberService {
 	}
 
 	public async login(input: LoginInput): Promise<Member> {
+		const filter = input.memberPhone ? { memberPhone: input.memberPhone } : { memberNick: input.memberNick };
 		// memberPassword has select: false, so it must be asked for explicitly
 		const found = await this.memberModel
-			.findOne({ memberNick: input.memberNick })
+			.findOne(filter)
 			.select('+memberPassword')
 			.lean<Member & { memberPassword: string }>()
 			.exec();
 
-		// same message for "no such nick" and "wrong password": don't reveal which one was wrong
-		if (!found || found.memberStatus === MemberStatus.DELETE) {
-			throw new BadRequestException(Message.WRONG_LOGIN);
-		}
+		// same message for "not found" and "wrong password": don't reveal which one was wrong
+		if (!found) throw new BadRequestException(Message.WRONG_LOGIN);
 		const isMatch = await this.authService.comparePassword(input.memberPassword, found.memberPassword);
 		if (!isMatch) throw new BadRequestException(Message.WRONG_LOGIN);
 
-		// PENDING / REJECTED agents may log in to see their application status; posting cars is checked elsewhere
-		if (found.memberStatus === MemberStatus.BLOCK) {
-			throw new ForbiddenException(Message.BLOCKED_MEMBER);
+		// only after the password matched: tell the real owner why they can't get in. Only ACTIVE gets a token.
+		switch (found.memberStatus) {
+			case MemberStatus.PENDING:
+				throw new ForbiddenException(Message.AGENT_UNDER_REVIEW);
+			case MemberStatus.REJECTED: {
+				const reason = found.agentRejectReason ? `: ${found.agentRejectReason}` : '';
+				throw new ForbiddenException(`${Message.AGENT_REJECTED}${reason}. Please contact admin.`);
+			}
+			case MemberStatus.BLOCK:
+				throw new ForbiddenException(Message.BLOCKED_MEMBER);
+			case MemberStatus.DELETE:
+				throw new ForbiddenException(Message.ACCOUNT_UNAVAILABLE);
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars

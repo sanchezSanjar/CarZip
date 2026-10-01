@@ -18,4 +18,7 @@ export enum Message {
 	TOKEN_NOT_EXIST = 'Bearer token is not provided!',
 	NOT_AUTHENTICATED = 'You are not authenticated, please login first!',
 	ONLY_SPECIFIC_ROLES_ALLOWED = 'Allowed only for members with specific roles!',
+	AGENT_UNDER_REVIEW = 'Your agent account is under review. Usually within 24 hours.',
+	AGENT_REJECTED = 'Your agent application was rejected',
+	ACCOUNT_UNAVAILABLE = 'This account is no longer available.',
 }
