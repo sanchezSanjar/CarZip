@@ -15,6 +15,8 @@ import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
+import { ViewService } from '../view/view.service';
+import { ViewGroup } from '../../libs/enums/view.enum';
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {
@@ -55,6 +57,7 @@ export class MemberService {
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private readonly authService: AuthService,
 		private readonly otpService: OtpService,
+		private readonly viewService: ViewService,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -165,6 +168,19 @@ export class MemberService {
 
 		const member = await this.memberModel.findOne(filter).lean<Member>().exec();
 		if (!member) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		// count a profile visit: logged-in viewers only, once per viewer, never your own profile
+		if (viewer && !isSelf && member.memberStatus === MemberStatus.ACTIVE) {
+			const isNewView = await this.viewService.recordView({
+				memberId: viewer._id,
+				viewRefId: targetId,
+				viewGroup: ViewGroup.MEMBER,
+			});
+			if (isNewView) {
+				await this.memberModel.updateOne({ _id: targetId }, { $inc: { memberViews: 1 } }).exec();
+				member.memberViews += 1;
+			}
+		}
 
 		if (!isAdmin && !isSelf) {
 			for (const key of PRIVATE_FIELDS) delete member[key];
