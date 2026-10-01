@@ -26,6 +26,9 @@ export const availableMemberSorts = [
 /** what board article lists may be sorted by */
 export const availableBoardArticleSorts = ['createdAt', 'updatedAt', 'articleLikes', 'articleViews', 'articleComments'];
 
+/** what comment lists may be sorted by */
+export const availableCommentSorts = ['createdAt', 'updatedAt'];
+
 /**
  * User text -> a regex that matches it LITERALLY. Never pass search text straight into new RegExp():
  * a crafted pattern like "(a+)+$" can freeze the database (ReDoS), and "." or "*" would change the meaning.
