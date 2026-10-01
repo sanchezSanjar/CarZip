@@ -15,6 +15,7 @@ import { shapeIntoMongoObjectId } from '../../libs/config';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WithoutGuard } from '../auth/guards/without.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 
 @Resolver()
@@ -51,6 +52,16 @@ export class BoardArticleResolver {
 		@AuthMember() authMember: AuthMemberData,
 	): Promise<BoardArticle> {
 		return this.boardArticleService.updateBoardArticle(authMember, input);
+	}
+
+	// like / un-like an article (toggle): any logged-in member, except the author
+	@UseGuards(AuthGuard)
+	@Mutation(() => BoardArticle)
+	public async likeTargetBoardArticle(
+		@Args('articleId') articleId: string,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<BoardArticle> {
+		return this.boardArticleService.likeTargetBoardArticle(memberId, shapeIntoMongoObjectId(articleId));
 	}
 
 	// public board (like / "did I like it" comes with the like commits)

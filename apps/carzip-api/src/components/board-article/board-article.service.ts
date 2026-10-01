@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	InternalServerErrorException,
 	Logger,
@@ -26,6 +27,10 @@ import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { lookupPublicMember, PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
 import { ViewService } from '../view/view.service';
 import { UploadService } from '../upload/upload.service';
+import { LikeService } from '../like/like.service';
+import { NotificationService } from '../notification/notification.service';
+import { LikeGroup } from '../../libs/enums/like.enum';
+import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 
 /**
  * Community board. Who does what (the user's rule, beyond the flowchart):
@@ -41,6 +46,9 @@ export class BoardArticleService {
 		@InjectModel('Member') private readonly memberModel: Model<Member>, // memberArticles counter, author data
 		private readonly viewService: ViewService,
 		private readonly uploadService: UploadService,
+		private readonly likeService: LikeService,
+		private readonly notificationService: NotificationService,
+		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 	) {}
 
 	public async createBoardArticle(memberId: Types.ObjectId, input: BoardArticleInput): Promise<BoardArticle> {
@@ -121,6 +129,52 @@ export class BoardArticleService {
 			await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: -1 } });
 		}
 		return updated;
+	}
+
+	/**
+	 * Like / un-like an article (toggle): ACTIVE articles only, authors can't like their own, the author's
+	 * PERSONAL block stops the blocked member, articleLikes follows the real likes, ONE LIKE notification per liker.
+	 */
+	public async likeTargetBoardArticle(memberId: Types.ObjectId, articleId: Types.ObjectId): Promise<BoardArticle> {
+		const article = await this.boardArticleModel
+			.findOne({ _id: articleId, articleStatus: BoardArticleStatus.ACTIVE })
+			.select('memberId articleTitle')
+			.lean<BoardArticle>()
+			.exec();
+		if (!article) throw new NotFoundException(Message.NO_DATA_FOUND);
+		const authorId = new Types.ObjectId(String(article.memberId));
+		if (authorId.equals(memberId)) throw new BadRequestException(Message.OWN_CONTENT_LIKE_DENIED);
+		if (await this.blockModel.exists({ blockerId: authorId, blockedId: memberId })) {
+			throw new ForbiddenException(Message.LIKE_BLOCKED);
+		}
+
+		const modifier = await this.likeService.toggleLike({
+			memberId,
+			likeRefId: articleId,
+			likeGroup: LikeGroup.ARTICLE,
+		});
+		const updated = await this.boardArticleModel
+			.findByIdAndUpdate(articleId, { $inc: { articleLikes: modifier } }, { new: true })
+			.lean<BoardArticle>()
+			.exec();
+		if (!updated) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		if (modifier === 1) {
+			await this.notificationService.notifyOnce({
+				notificationType: NotificationType.LIKE,
+				notificationGroup: NotificationGroup.ARTICLE,
+				notificationTitle: `Someone liked your article "${article.articleTitle}"`,
+				authorId: memberId,
+				receiverId: authorId,
+				articleId,
+			});
+		}
+		const author = await this.memberModel
+			.findById(authorId)
+			.select(PUBLIC_MEMBER_FIELDS.join(' '))
+			.lean<AgentPublic>()
+			.exec();
+		return { ...updated, memberData: author ?? undefined };
 	}
 
 	/** the public board: ACTIVE articles, newest first by default, with each author's public data */
