@@ -39,4 +39,9 @@ export enum Message {
 	ADMIN_CANNOT_UPDATE_SELF = 'Admins cannot change their own account here.',
 	ADMIN_CANNOT_UPDATE_ADMIN = 'Admin accounts cannot be changed here.',
 	ONLY_AGENT_CAN_BE_REJECTED = 'Only agent applications can be rejected.',
+	NO_FILE = 'Please attach an image.',
+	PROVIDE_ALLOWED_FORMAT = 'Please provide jpg, jpeg, png or webp images!',
+	INVALID_IMAGE = 'The file is not a valid image.',
+	UPLOAD_FAILED = 'Upload failed!',
+	CAR_IMAGES_AGENT_ONLY = 'Only agents can upload car photos.',
 }
