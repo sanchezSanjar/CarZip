@@ -6,6 +6,7 @@ import { CarService } from './car.service';
 import { CarResolver } from './car.resolver';
 import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../upload/upload.module';
+import { ViewModule } from '../view/view.module';
 
 @Module({
 	imports: [
@@ -15,6 +16,7 @@ import { UploadModule } from '../upload/upload.module';
 		]),
 		AuthModule, // RolesGuard
 		UploadModule, // "is this photo one of our uploads?"
+		ViewModule, // carViews
 	],
 	providers: [CarService, CarResolver],
 	exports: [CarService], // admin moderation in MemberService

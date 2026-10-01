@@ -63,6 +63,7 @@ export class Car {
 	@Field(() => Int) carRank: number;
 	@Field(() => String) memberId: string;
 	@Field(() => Date, { nullable: true }) soldAt?: Date;
+	@Field(() => Date, { nullable: true }) deletedAt?: Date; // only admins can see deleted cars
 	@Field(() => Date) createdAt: Date;
 	@Field(() => Date) updatedAt: Date;
 
