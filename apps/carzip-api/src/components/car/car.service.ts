@@ -7,19 +7,20 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Error as MongooseError, Model, Types } from 'mongoose';
-import { AgentPublic, Car, Cars } from '../../libs/dto/car/car';
-import { CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { AgentCars, AgentPublic, Car, Cars } from '../../libs/dto/car/car';
+import { AgentCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Member } from '../../libs/dto/member/member';
-import { CarMarket, CarStatus } from '../../libs/enums/car.enum';
+import { CarMarket, CarSort, CarStatus } from '../../libs/enums/car.enum';
 import { UploadTarget } from '../../libs/enums/upload.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { UploadService } from '../upload/upload.service';
 import { ViewService } from '../view/view.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { MemberType } from '../../libs/enums/member.enum';
+import { Direction } from '../../libs/enums/common.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { buildCarsPipeline, toPage } from '../../libs/utils/car-query';
@@ -195,6 +196,32 @@ export class CarService {
 	public async getCars(input: CarsInquiry): Promise<Cars> {
 		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input)).exec();
 		return toPage(docs, input);
+	}
+
+	/**
+	 * "My cars" dashboard: only the logged-in agent's cars (memberId from the JWT), ACTIVE + HOLD + SOLD
+	 * or one of them. DELETE is never listed. Page numbers + total, for tabs like "Paused (3)".
+	 */
+	public async getAgentCars(memberId: Types.ObjectId, input: AgentCarsInquiry): Promise<AgentCars> {
+		const status = input.search?.carStatus;
+		const match = { memberId, carStatus: status ?? { $ne: CarStatus.DELETE } };
+		const direction = input.direction ?? Direction.DESC;
+		// _id breaks ties (same price / views), so a car never shows up on two pages or on none
+		const sort: Record<string, Direction> = { [input.sort ?? CarSort.CREATED_AT]: direction, _id: direction };
+
+		const [result] = await this.carModel
+			.aggregate<AgentCars>([
+				{ $match: match },
+				{ $sort: sort },
+				{
+					$facet: {
+						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
 	}
 
 	/**

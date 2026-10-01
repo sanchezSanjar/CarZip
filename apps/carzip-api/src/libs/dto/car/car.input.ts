@@ -27,6 +27,7 @@ import {
 	CarMarket,
 	CarOption,
 	CarSort,
+	CarStatus,
 	CarTransmission,
 	CarType,
 } from '../../enums/car.enum';
@@ -311,4 +312,44 @@ export class CarInput {
 	@IsIn(Object.values(CarOption), { each: true })
 	@Field(() => [CarOption], { nullable: true })
 	carOptions?: CarOption[];
+}
+
+@InputType()
+class ACSearch {
+	/** one tab of the dashboard. Omitted = ACTIVE + HOLD + SOLD. DELETE is never listed. */
+	@IsOptional()
+	@IsIn([CarStatus.ACTIVE, CarStatus.HOLD, CarStatus.SOLD])
+	@Field(() => CarStatus, { nullable: true })
+	carStatus?: CarStatus;
+}
+
+/** getAgentCars input: the logged-in agent's own cars ("my cars" dashboard), page-based */
+@InputType()
+export class AgentCarsInquiry {
+	@IsInt()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(Object.values(CarSort))
+	@Field(() => CarSort, { nullable: true, defaultValue: CarSort.CREATED_AT })
+	sort?: CarSort;
+
+	@IsOptional()
+	@IsIn([Direction.ASC, Direction.DESC])
+	@Field(() => Direction, { nullable: true, defaultValue: Direction.DESC })
+	direction?: Direction;
+
+	@IsOptional()
+	@ValidateNested() // without it nothing inside search is validated
+	@Type(() => ACSearch)
+	@Field(() => ACSearch, { nullable: true })
+	search?: ACSearch;
 }

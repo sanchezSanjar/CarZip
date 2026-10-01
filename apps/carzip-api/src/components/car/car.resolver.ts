@@ -2,8 +2,8 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
-import { Car, Cars } from '../../libs/dto/car/car';
-import { CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { AgentCars, Car, Cars } from '../../libs/dto/car/car';
+import { AgentCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -40,6 +40,17 @@ export class CarResolver {
 	@Query(() => Cars)
 	public async getCars(@Args('input') input: CarsInquiry): Promise<Cars> {
 		return this.carService.getCars(input);
+	}
+
+	// "My cars" dashboard: always the logged-in agent's own cars
+	@Roles(MemberType.AGENT)
+	@UseGuards(RolesGuard)
+	@Query(() => AgentCars)
+	public async getAgentCars(
+		@Args('input') input: AgentCarsInquiry,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<AgentCars> {
+		return this.carService.getAgentCars(memberId, input);
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view

@@ -1,4 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { TotalCounter } from '../member/member';
 import {
 	CarBrand,
 	CarColor,
@@ -76,6 +77,13 @@ export class Cars {
 	@Field(() => [Car]) list: Car[];
 	/** pass back as CarsInquiry.cursor to get the next page. null = no more cars */
 	@Field(() => String, { nullable: true }) nextCursor?: string | null;
+}
+
+/** a page of the agent's own cars. metaCounter[0].total = how many in total (for page numbers / tab counts) */
+@ObjectType()
+export class AgentCars {
+	@Field(() => [Car]) list: Car[];
+	@Field(() => [TotalCounter], { nullable: true }) metaCounter?: TotalCounter[];
 }
 
 /** Brand -> models list for the "add car" form and the model filter. Served by the API so web and mobile never drift. */
