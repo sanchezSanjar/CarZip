@@ -32,4 +32,6 @@ export enum Message {
 	PHONE_NOT_VERIFIED = 'Please verify your phone number first.',
 	RESET_TOKEN_INVALID = 'Invalid or expired reset token. Please start over.',
 	PASSWORD_RESET_DONE = 'Password has been changed. Please log in again.',
+	UPDATE_FAILED = 'Update failed!',
+	NOTHING_TO_UPDATE = 'Nothing to update.',
 }

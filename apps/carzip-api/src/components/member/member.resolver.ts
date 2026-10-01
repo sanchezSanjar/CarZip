@@ -1,9 +1,9 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Types } from 'mongoose';
 import { MemberService } from './member.service';
 import { Member } from '../../libs/dto/member/member';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -37,14 +37,17 @@ export class MemberResolver {
 	@UseGuards(RolesGuard)
 	@Query(() => String)
 	public checkAuthRoles(@AuthMember() authMember: AuthMemberData): string {
-		return `Hi ${authMember.memberNick}, you are ${authMember.memberType}`;
+		return `Hi ${authMember.memberNick}, you are ${authMember.memberType} (memberId: ${authMember._id})`;
 	}
 
-	// Authenticated
+	// Authenticated: a member edits their own profile. Who is edited comes from the JWT, never from the input
 	@UseGuards(AuthGuard)
-	@Mutation(() => String)
-	public async updateMember(@AuthMember('_id') memberId: Types.ObjectId): Promise<string> {
-		return this.memberService.updateMember(memberId);
+	@Mutation(() => Member)
+	public async updateMember(
+		@Args('input') input: MemberUpdate,
+		@AuthMember() authMember: AuthMemberData,
+	): Promise<Member> {
+		return this.memberService.updateMember(authMember, input);
 	}
 
 	// Authenticated

@@ -4,12 +4,12 @@ import { MemberAuthType, MemberType } from '../../enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
 
 // Korean mobile number, digits only: 010xxxxxxxx
-const PHONE_REGEX = /^01[016789]\d{7,8}$/;
+export const PHONE_REGEX = /^01[016789]\d{7,8}$/;
 // 사업자등록번호: 123-45-67890 (dashes optional)
 const BUSINESS_NO_REGEX = /^\d{3}-?\d{2}-?\d{5}$/;
-const NICK_REGEX = /^[a-zA-Z0-9_]+$/;
+export const NICK_REGEX = /^[a-zA-Z0-9_]+$/;
 // public contact numbers: mobile, landline (02-123-4567) or international (+82 10 ...)
-const CONTACT_PHONE_REGEX = /^\+?[0-9\s()-]{7,20}$/;
+export const CONTACT_PHONE_REGEX = /^\+?[0-9\s()-]{7,20}$/;
 
 /** signup mutation input. ADMIN can never be chosen here: admins are created by hand. */
 @InputType()

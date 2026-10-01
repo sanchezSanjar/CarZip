@@ -1,7 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { AuthMemberData } from '../../libs/types/auth';
 import { Member } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Message } from '../../libs/enums/common.enum';
@@ -14,6 +16,9 @@ const DUPLICATE_MESSAGES: Record<string, Message> = {
 	memberPhone: Message.USED_PHONE,
 	agentBusinessNo: Message.USED_BUSINESS_NO,
 };
+
+// public contacts shown on listings: only agents have them
+const CONTACT_FIELDS = ['contactPhone', 'contactEmail', 'contactTelegram', 'contactWhatsapp', 'contactKakao'] as const;
 
 const AGENT_ONLY_FIELDS = [
 	'agentCompany',
@@ -65,10 +70,7 @@ export class MemberService {
 			}
 			return member;
 		} catch (err: any) {
-			if (err?.code === 11000) {
-				const field = Object.keys(err.keyPattern ?? {})[0];
-				throw new BadRequestException(DUPLICATE_MESSAGES[field] ?? Message.CREATE_FAILED);
-			}
+			this.throwIfDuplicate(err, Message.CREATE_FAILED);
 			console.log('Error, Service.signup:', err.message);
 			throw new InternalServerErrorException(Message.CREATE_FAILED);
 		}
@@ -107,8 +109,31 @@ export class MemberService {
 		return { ...member, accessToken: await this.authService.createToken(member) };
 	}
 
-	public async updateMember(memberId: Types.ObjectId): Promise<string> {
-		return `updateMember executed for ${memberId}`;
+	public async updateMember(authMember: AuthMemberData, input: MemberUpdate): Promise<Member> {
+		// keep only the fields the client actually sent
+		const data: Record<string, string> = Object.fromEntries(
+			Object.entries(input).filter(([, value]) => value !== undefined && value !== null),
+		);
+		if (authMember.memberType !== MemberType.AGENT) {
+			for (const key of CONTACT_FIELDS) delete data[key]; // only agents have public contacts
+		}
+		if (!Object.keys(data).length) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+
+		let updated: Member | null;
+		try {
+			updated = await this.memberModel
+				.findOneAndUpdate({ _id: authMember._id, memberStatus: MemberStatus.ACTIVE }, { $set: data }, { new: true })
+				.lean<Member>()
+				.exec();
+		} catch (err: any) {
+			this.throwIfDuplicate(err, Message.UPDATE_FAILED); // e.g. the new nick is taken
+			console.log('Error, Service.updateMember:', err.message);
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+
+		// the token carries memberNick: a new one keeps it in sync after a nick change
+		return { ...updated, accessToken: await this.authService.createToken(updated) };
 	}
 
 	public async getMember(): Promise<string> {
@@ -123,5 +148,12 @@ export class MemberService {
 
 	public async updateMemberByAdmin(): Promise<string> {
 		return 'updateMemberByAdmin executed';
+	}
+
+	/** MongoDB duplicate key (code 11000) on a unique index -> readable message */
+	private throwIfDuplicate(err: any, fallback: Message): void {
+		if (err?.code !== 11000) return;
+		const field = Object.keys(err.keyPattern ?? {})[0];
+		throw new BadRequestException(DUPLICATE_MESSAGES[field] ?? fallback);
 	}
 }
