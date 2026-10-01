@@ -7,6 +7,10 @@ import { CommentInput, CommentsInquiry } from '../../libs/dto/comment/comment.in
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { MemberType } from '../../libs/enums/member.enum';
+import { shapeIntoMongoObjectId } from '../../libs/config';
 
 @Resolver()
 export class CommentResolver {
@@ -36,5 +40,14 @@ export class CommentResolver {
 	@Query(() => Comments)
 	public async getComments(@Args('input') input: CommentsInquiry): Promise<Comments> {
 		return this.commentService.getComments(input);
+	}
+
+	/** ADMIN: only admins delete comments (flowchart) */
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Comment)
+	public async removeCommentByAdmin(@Args('commentId') commentId: string): Promise<Comment> {
+		return this.commentService.removeCommentByAdmin(shapeIntoMongoObjectId(commentId));
 	}
 }

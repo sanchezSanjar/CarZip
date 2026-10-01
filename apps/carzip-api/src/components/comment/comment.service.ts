@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	ForbiddenException,
 	Injectable,
 	InternalServerErrorException,
@@ -123,6 +124,30 @@ export class CommentService {
 			])
 			.exec();
 		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/** ADMIN */
+
+	/**
+	 * Admin flowchart: "Comments -> status DELETE · $inc counters -1". Only admins delete comments.
+	 * Soft delete: the comment leaves every list but stays in the DB as moderation history.
+	 */
+	public async removeCommentByAdmin(commentId: Types.ObjectId): Promise<Comment> {
+		// ACTIVE -> DELETE in one atomic step: parallel requests can't lower the counter twice
+		const removed = await this.commentModel
+			.findOneAndUpdate(
+				{ _id: commentId, commentStatus: CommentStatus.ACTIVE },
+				{ $set: { commentStatus: CommentStatus.DELETE } },
+				{ new: true },
+			)
+			.lean<Comment>()
+			.exec();
+		if (!removed) {
+			if (await this.commentModel.exists({ _id: commentId })) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+			throw new NotFoundException(Message.NO_DATA_FOUND);
+		}
+		await this.changeCounter(removed.commentGroup, new Types.ObjectId(String(removed.commentRefId)), -1);
+		return removed;
 	}
 
 	/** the thing being commented on must exist and be ACTIVE; returns its owner */
