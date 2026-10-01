@@ -1,5 +1,18 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsUrl, Length, Matches, Max, Min, ValidateIf } from 'class-validator';
+import {
+	IsEmail,
+	IsIn,
+	IsNotEmpty,
+	IsOptional,
+	IsUrl,
+	Length,
+	Matches,
+	Max,
+	Min,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
 import { availableAgentSorts, availableMemberSorts } from '../../config';
@@ -154,6 +167,8 @@ export class AgentsInquiry {
 	direction?: Direction;
 
 	@IsOptional()
+	@ValidateNested() // without it nothing inside search is validated
+	@Type(() => AISearch)
 	@Field(() => AISearch, { nullable: true })
 	search?: AISearch;
 }
@@ -203,6 +218,8 @@ export class MembersInquiry {
 	direction?: Direction;
 
 	@IsOptional()
+	@ValidateNested() // without it nothing inside search is validated
+	@Type(() => MISearch)
 	@Field(() => MISearch, { nullable: true })
 	search?: MISearch;
 }

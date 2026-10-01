@@ -4,22 +4,38 @@ import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
 import { Direction } from '../enums/common.enum';
 import { CarsInquiry, NumberRange } from '../dto/car/car.input';
 
-type Cursor = { v: string | number; id: string };
+// s / d: the sort the cursor was made for. A cursor only makes sense for that same sort:
+// "after price 21,000,000" means nothing when the list is sorted by newest.
+type Cursor = { v: string | number; id: string; s: CarSort; d: Direction };
 
-export function encodeCursor(sortField: CarSort, doc: Record<string, any>): string {
+export function encodeCursor(sortField: CarSort, direction: Direction, doc: Record<string, any>): string {
 	const raw = doc[sortField];
 	const v = raw instanceof Date ? raw.toISOString() : raw;
-	return Buffer.from(JSON.stringify({ v, id: String(doc._id) })).toString('base64url');
+	const cursor: Cursor = { v, id: String(doc._id), s: sortField, d: direction };
+	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
 }
 
-function decodeCursor(cursor: string, sortField: CarSort): { v: Date | number; id: Types.ObjectId } {
+function decodeCursor(
+	cursor: string,
+	sortField: CarSort,
+	direction: Direction,
+): { v: Date | number; id: Types.ObjectId } {
+	let c: Cursor;
+	let v: Date | number;
+	let id: Types.ObjectId;
 	try {
-		const c: Cursor = JSON.parse(Buffer.from(cursor, 'base64url').toString());
-		const v = sortField === CarSort.CREATED_AT ? new Date(c.v) : Number(c.v);
-		return { v, id: new Types.ObjectId(c.id) };
+		c = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+		v = sortField === CarSort.CREATED_AT ? new Date(c.v) : Number(c.v);
+		id = new Types.ObjectId(c.id);
 	} catch {
 		throw new BadRequestException('Invalid cursor');
 	}
+	if (c.s !== sortField || c.d !== direction) {
+		throw new BadRequestException('This cursor belongs to another sort order. Start again without a cursor.');
+	}
+	if (typeof v === 'number' ? Number.isNaN(v) : Number.isNaN(v.getTime()))
+		throw new BadRequestException('Invalid cursor');
+	return { v, id };
 }
 
 function range(r?: NumberRange) {
@@ -67,7 +83,7 @@ export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
 	// cursor: continue after the last car of the previous page. _id breaks ties
 	// (many cars have the same likes / price), otherwise cars get skipped or repeated.
 	if (input.cursor) {
-		const c = decodeCursor(input.cursor, sortField);
+		const c = decodeCursor(input.cursor, sortField, dir);
 		const op = dir === Direction.DESC ? '$lt' : '$gt';
 		match.$or = [{ [sortField]: { [op]: c.v } }, { [sortField]: c.v, _id: { [op]: c.id } }];
 	}
@@ -107,5 +123,6 @@ export function toPage<T extends Record<string, any>>(docs: T[], input: CarsInqu
 	const hasMore = docs.length > input.limit;
 	const list = hasMore ? docs.slice(0, input.limit) : docs;
 	const sortField = input.sort ?? CarSort.CREATED_AT;
-	return { list, nextCursor: hasMore ? encodeCursor(sortField, list[list.length - 1]) : null };
+	const direction = input.direction ?? Direction.DESC;
+	return { list, nextCursor: hasMore ? encodeCursor(sortField, direction, list[list.length - 1]) : null };
 }

@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Error as MongooseError, Model, Types } from 'mongoose';
-import { AgentPublic, Car } from '../../libs/dto/car/car';
-import { CarInput } from '../../libs/dto/car/car.input';
+import { AgentPublic, Car, Cars } from '../../libs/dto/car/car';
+import { CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -22,6 +22,7 @@ import { ViewGroup } from '../../libs/enums/view.enum';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { buildCarsPipeline, toPage } from '../../libs/utils/car-query';
 
 // what a car page shows about its agent (= AgentPublic). Verification data is never selected.
 const AGENT_PUBLIC_FIELDS =
@@ -184,6 +185,16 @@ export class CarService {
 		// agent contact buttons on the car page. A plain read: no profile view is counted for the agent
 		const agent = await this.memberModel.findById(car.memberId).select(AGENT_PUBLIC_FIELDS).lean<AgentPublic>().exec();
 		return { ...car, agentData: agent ?? undefined };
+	}
+
+	/**
+	 * Public car search (Search, Filter, Sort & Engage flowchart): ACTIVE cars, filters + sort + cursor
+	 * pagination, all in MongoDB (libs/utils/car-query.ts). Each car comes with its agent's PUBLIC data.
+	 * "load more" = send nextCursor back as cursor. No match = an empty list, not an error.
+	 */
+	public async getCars(input: CarsInquiry): Promise<Cars> {
+		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input)).exec();
+		return toPage(docs, input);
 	}
 
 	/**

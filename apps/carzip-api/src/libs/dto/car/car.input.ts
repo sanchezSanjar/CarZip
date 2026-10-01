@@ -15,7 +15,9 @@ import {
 	Max,
 	Min,
 	ValidateIf,
+	ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
 	CarBrand,
 	CarColor,
@@ -109,19 +111,27 @@ export class CarsSearch {
 
 	/** KRW (won). Cars without a KRW price (export only) never match */
 	@IsOptional()
+	@ValidateNested() // without it nothing inside is validated
+	@Type(() => NumberRange)
 	@Field(() => NumberRange, { nullable: true })
 	priceRange?: NumberRange;
 
 	/** USD. Cars without a USD price (domestic only) never match */
 	@IsOptional()
+	@ValidateNested() // without it nothing inside is validated
+	@Type(() => NumberRange)
 	@Field(() => NumberRange, { nullable: true })
 	priceUsdRange?: NumberRange;
 
 	@IsOptional()
+	@ValidateNested() // without it nothing inside is validated
+	@Type(() => NumberRange)
 	@Field(() => NumberRange, { nullable: true })
 	mileageRange?: NumberRange;
 
 	@IsOptional()
+	@ValidateNested() // without it nothing inside is validated
+	@Type(() => NumberRange)
 	@Field(() => NumberRange, { nullable: true })
 	yearRange?: NumberRange;
 
@@ -172,6 +182,8 @@ export class CarsInquiry {
 	cursor?: string;
 
 	@IsOptional()
+	@ValidateNested() // without it nothing inside search (agentId, text, lists, ranges) is validated
+	@Type(() => CarsSearch)
 	@Field(() => CarsSearch, { nullable: true })
 	search?: CarsSearch;
 }

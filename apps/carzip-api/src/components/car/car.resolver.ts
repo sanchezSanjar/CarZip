@@ -2,8 +2,8 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
-import { Car } from '../../libs/dto/car/car';
-import { CarInput } from '../../libs/dto/car/car.input';
+import { Car, Cars } from '../../libs/dto/car/car';
+import { CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate } from '../../libs/dto/car/car.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -34,6 +34,12 @@ export class CarResolver {
 	@Mutation(() => Car)
 	public async updateCar(@Args('input') input: CarUpdate, @AuthMember('_id') memberId: Types.ObjectId): Promise<Car> {
 		return this.carService.updateCar(memberId, input);
+	}
+
+	// Public car search: guests and members (like / "did I like it" comes with the like commits)
+	@Query(() => Cars)
+	public async getCars(@Args('input') input: CarsInquiry): Promise<Cars> {
+		return this.carService.getCars(input);
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view
