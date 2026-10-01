@@ -49,3 +49,15 @@ export class Member {
 	/** JWT, only returned by signup and login. The client sends it back as "Authorization: Bearer <token>" */
 	@Field(() => String, { nullable: true }) accessToken?: string;
 }
+
+@ObjectType()
+export class TotalCounter {
+	@Field(() => Int, { nullable: true }) total: number;
+}
+
+/** a page of members. metaCounter[0].total = how many match in total (for page numbers) */
+@ObjectType()
+export class Members {
+	@Field(() => [Member]) list: Member[];
+	@Field(() => [TotalCounter], { nullable: true }) metaCounter?: TotalCounter[];
+}

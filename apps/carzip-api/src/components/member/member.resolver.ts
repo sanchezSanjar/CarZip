@@ -1,8 +1,8 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { MemberService } from './member.service';
-import { Member } from '../../libs/dto/member/member';
-import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import { Member, Members } from '../../libs/dto/member/member';
+import { AgentsInquiry, LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -60,6 +60,12 @@ export class MemberResolver {
 		@AuthMember() authMember: AuthMemberData | null,
 	): Promise<Member> {
 		return this.memberService.getMember(authMember, shapeIntoMongoObjectId(memberId));
+	}
+
+	// Public: the dealer directory
+	@Query(() => Members)
+	public async getAgents(@Args('input') input: AgentsInquiry): Promise<Members> {
+		return this.memberService.getAgents(input);
 	}
 
 	/** ADMIN */

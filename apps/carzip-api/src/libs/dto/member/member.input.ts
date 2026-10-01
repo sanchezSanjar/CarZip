@@ -1,7 +1,9 @@
-import { Field, InputType } from '@nestjs/graphql';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsUrl, Length, Matches, ValidateIf } from 'class-validator';
+import { Field, InputType, Int } from '@nestjs/graphql';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsUrl, Length, Matches, Max, Min, ValidateIf } from 'class-validator';
 import { MemberAuthType, MemberType } from '../../enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
+import { availableAgentSorts } from '../../config';
+import { Direction } from '../../enums/common.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 export const PHONE_REGEX = /^01[016789]\d{7,8}$/;
@@ -118,4 +120,40 @@ export class LoginInput {
 	@Length(6, 30)
 	@Field(() => String)
 	memberPassword: string;
+}
+
+@InputType()
+class AISearch {
+	/** matches nick or company name, case-insensitive */
+	@IsOptional()
+	@Length(1, 50)
+	@Field(() => String, { nullable: true })
+	text?: string;
+}
+
+/** getAgents input: page-based list of ACTIVE (approved) agents */
+@InputType()
+export class AgentsInquiry {
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(availableAgentSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+
+	@IsOptional()
+	@IsIn([Direction.ASC, Direction.DESC])
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
+
+	@IsOptional()
+	@Field(() => AISearch, { nullable: true })
+	search?: AISearch;
 }

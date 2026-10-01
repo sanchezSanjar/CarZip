@@ -8,3 +8,12 @@ export const shapeIntoMongoObjectId = (target: string | Types.ObjectId): Types.O
 	if (!Types.ObjectId.isValid(target)) throw new BadRequestException(Message.INVALID_ID);
 	return new Types.ObjectId(target);
 };
+
+/** what getAgents may be sorted by: only indexed / counter fields, never anything private */
+export const availableAgentSorts = ['createdAt', 'updatedAt', 'memberCars', 'memberLikes', 'memberViews', 'memberRank'];
+
+/**
+ * User text -> a regex that matches it LITERALLY. Never pass search text straight into new RegExp():
+ * a crafted pattern like "(a+)+$" can freeze the database (ReDoS), and "." or "*" would change the meaning.
+ */
+export const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

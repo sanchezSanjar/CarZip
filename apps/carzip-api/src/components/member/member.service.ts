@@ -7,12 +7,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import { AgentsInquiry, LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
-import { Member } from '../../libs/dto/member/member';
+import { Member, Members } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
-import { Message } from '../../libs/enums/common.enum';
+import { Direction, Message } from '../../libs/enums/common.enum';
+import { escapeRegex } from '../../libs/config';
 import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
@@ -39,6 +40,11 @@ const PRIVATE_FIELDS = [
 	'agentRejectReason',
 	'deletedAt',
 ] as const;
+
+// aggregate() ignores the schema's select: false, so lists must exclude secrets explicitly
+const PUBLIC_LIST_PROJECTION = Object.fromEntries(
+	['memberPassword', 'passwordChangedAt', ...PRIVATE_FIELDS].map((key) => [key, 0]),
+);
 
 const AGENT_ONLY_FIELDS = [
 	'agentCompany',
@@ -186,6 +192,38 @@ export class MemberService {
 			for (const key of PRIVATE_FIELDS) delete member[key];
 		}
 		return member;
+	}
+
+	/** public dealer directory: ACTIVE (approved) agents only, never private fields */
+	public async getAgents(input: AgentsInquiry): Promise<Members> {
+		const match: Record<string, unknown> = { memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE };
+		const text = input.search?.text?.trim();
+		if (text) {
+			const pattern = new RegExp(escapeRegex(text), 'i');
+			match.$or = [{ memberNick: pattern }, { agentCompany: pattern }];
+		}
+		const direction = input.direction ?? Direction.DESC;
+		// _id breaks ties: many agents share the same views/rank, without it pages could repeat or skip agents
+		const sort: Record<string, Direction> = { [input.sort ?? 'createdAt']: direction, _id: direction };
+
+		const [result] = await this.memberModel
+			.aggregate<Members>([
+				{ $match: match },
+				{ $sort: sort },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{ $project: PUBLIC_LIST_PROJECTION },
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		// no match is an empty page, not an error
+		return result ?? { list: [], metaCounter: [] };
 	}
 
 	/** ADMIN */
