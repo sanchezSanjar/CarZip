@@ -1,6 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+	BadRequestException,
+	ForbiddenException,
+	Injectable,
+	InternalServerErrorException,
+	NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
@@ -19,6 +25,18 @@ const DUPLICATE_MESSAGES: Record<string, Message> = {
 
 // public contacts shown on listings: only agents have them
 const CONTACT_FIELDS = ['contactPhone', 'contactEmail', 'contactTelegram', 'contactWhatsapp', 'contactKakao'] as const;
+
+// what other people never see on a profile (only the member themself and admins)
+const PRIVATE_FIELDS = [
+	'memberPhone',
+	'memberFullName',
+	'memberWarnings',
+	'memberBlocks',
+	'agentBusinessNo',
+	'agentBusinessCard',
+	'agentRejectReason',
+	'deletedAt',
+] as const;
 
 const AGENT_ONLY_FIELDS = [
 	'agentCompany',
@@ -136,8 +154,22 @@ export class MemberService {
 		return { ...updated, accessToken: await this.authService.createToken(updated) };
 	}
 
-	public async getMember(): Promise<string> {
-		return 'getMember executed';
+	/**
+	 * Public profile. Guests and other members see ACTIVE members only, without private fields.
+	 * The member themself and admins see everything (admins also non-ACTIVE members).
+	 */
+	public async getMember(viewer: AuthMemberData | null, targetId: Types.ObjectId): Promise<Member> {
+		const isAdmin = viewer?.memberType === MemberType.ADMIN;
+		const isSelf = !!viewer?._id.equals(targetId);
+		const filter = isAdmin || isSelf ? { _id: targetId } : { _id: targetId, memberStatus: MemberStatus.ACTIVE };
+
+		const member = await this.memberModel.findOne(filter).lean<Member>().exec();
+		if (!member) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		if (!isAdmin && !isSelf) {
+			for (const key of PRIVATE_FIELDS) delete member[key];
+		}
+		return member;
 	}
 
 	/** ADMIN */

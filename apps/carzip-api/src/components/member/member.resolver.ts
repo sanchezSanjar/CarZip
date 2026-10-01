@@ -7,6 +7,8 @@ import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { WithoutGuard } from '../auth/guards/without.guard';
+import { shapeIntoMongoObjectId } from '../../libs/config';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthMemberData } from '../../libs/types/auth';
@@ -50,10 +52,14 @@ export class MemberResolver {
 		return this.memberService.updateMember(authMember, input);
 	}
 
-	// Authenticated
-	@Query(() => String)
-	public async getMember(): Promise<string> {
-		return this.memberService.getMember();
+	// Public (guest or logged in): logged-in viewers who are the member or an admin see private fields too
+	@UseGuards(WithoutGuard)
+	@Query(() => Member)
+	public async getMember(
+		@Args('memberId') memberId: string,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<Member> {
+		return this.memberService.getMember(authMember, shapeIntoMongoObjectId(memberId));
 	}
 
 	/** ADMIN */

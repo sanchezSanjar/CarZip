@@ -34,4 +34,6 @@ export enum Message {
 	PASSWORD_RESET_DONE = 'Password has been changed. Please log in again.',
 	UPDATE_FAILED = 'Update failed!',
 	NOTHING_TO_UPDATE = 'Nothing to update.',
+	NO_DATA_FOUND = 'No data found!',
+	INVALID_ID = 'Invalid id!',
 }
