@@ -1,5 +1,6 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Types } from 'mongoose';
 import { MemberService } from './member.service';
 import { Member, Members } from '../../libs/dto/member/member';
 import {
@@ -87,6 +88,16 @@ export class MemberResolver {
 		@AuthMember() authMember: AuthMemberData | null,
 	): Promise<Member> {
 		return this.memberService.getMember(shapeIntoMongoObjectId(targetId), authMember);
+	}
+
+	// like / un-like a member's profile (toggle)
+	@UseGuards(AuthGuard)
+	@Mutation(() => Member)
+	public async likeTargetMember(
+		@Args('memberId') targetId: string, // the profile to like
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<Member> {
+		return this.memberService.likeTargetMember(memberId, shapeIntoMongoObjectId(targetId));
 	}
 
 	// Public: the dealer directory

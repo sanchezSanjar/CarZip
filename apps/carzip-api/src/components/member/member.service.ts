@@ -27,6 +27,8 @@ import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
 import { CarService } from '../car/car.service';
 import { NotificationService } from '../notification/notification.service';
+import { LikeService } from '../like/like.service';
+import { LikeGroup } from '../../libs/enums/like.enum';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 
@@ -80,6 +82,8 @@ export class MemberService {
 		private readonly viewService: ViewService,
 		private readonly carService: CarService,
 		private readonly notificationService: NotificationService,
+		private readonly likeService: LikeService,
+		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -278,6 +282,41 @@ export class MemberService {
 	}
 
 	/** public dealer directory: ACTIVE (approved) agents only, never private fields */
+	/**
+	 * Like / un-like a member's profile (toggle). The liked member's memberLikes follows the real likes,
+	 * they get a LIKE notification when liked (not when un-liked). No self-likes, and an agent's
+	 * PERSONAL block stops the blocked member from liking them (flowchart).
+	 */
+	public async likeTargetMember(memberId: Types.ObjectId, targetId: Types.ObjectId): Promise<Member> {
+		if (memberId.equals(targetId)) throw new BadRequestException(Message.SELF_LIKE_DENIED);
+		const target = await this.memberModel.exists({ _id: targetId, memberStatus: MemberStatus.ACTIVE });
+		if (!target) throw new NotFoundException(Message.NO_DATA_FOUND);
+		if (await this.blockModel.exists({ blockerId: targetId, blockedId: memberId })) {
+			throw new ForbiddenException(Message.LIKE_BLOCKED);
+		}
+
+		const modifier = await this.likeService.toggleLike({ memberId, likeRefId: targetId, likeGroup: LikeGroup.MEMBER });
+		const updated = await this.memberModel
+			.findByIdAndUpdate(targetId, { $inc: { memberLikes: modifier } }, { new: true })
+			.lean<Member>()
+			.exec();
+		if (!updated) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		// once per liker: like -> un-like -> like does not notify again
+		if (modifier === 1) {
+			await this.notificationService.notifyOnce({
+				notificationType: NotificationType.LIKE,
+				notificationGroup: NotificationGroup.MEMBER,
+				notificationTitle: 'Someone liked your profile',
+				authorId: memberId,
+				receiverId: targetId,
+			});
+		}
+		// the liker sees the target's public profile only
+		for (const key of PRIVATE_FIELDS) delete updated[key];
+		return updated;
+	}
+
 	public async getAgents(input: AgentsInquiry): Promise<Members> {
 		const match: Record<string, unknown> = { memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE };
 		const text = input.search?.text?.trim();

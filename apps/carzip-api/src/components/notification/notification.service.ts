@@ -25,6 +25,22 @@ export class NotificationService {
 		}
 	}
 
+	/**
+	 * Like notify(), but only the first time: the same author, receiver, type and item never notify twice.
+	 * For likes: like -> un-like -> like (or a tap-happy user) must not flood the receiver.
+	 */
+	public async notifyOnce(input: NotificationInput): Promise<void> {
+		const { notificationType, authorId, receiverId, carId, articleId } = input;
+		const same = { notificationType, authorId, receiverId, carId: carId ?? null, articleId: articleId ?? null };
+		try {
+			if (await this.notificationModel.exists(same)) return;
+		} catch (err: any) {
+			this.logger.error(`${notificationType} -> ${receiverId} check failed: ${err?.message ?? err}`);
+			return;
+		}
+		await this.notify(input);
+	}
+
 	/** one notification per ACTIVE admin, e.g. "a new agent is waiting for review" */
 	public async notifyAdmins(input: Omit<NotificationInput, 'receiverId'>): Promise<void> {
 		try {

@@ -50,6 +50,8 @@ export enum Message {
 	CAR_HELD_BY_ADMIN = 'An admin put this car on hold',
 	CAR_REMOVE_ONLY_DELETED = 'Only deleted cars can be removed permanently. Delete the car first.',
 	CAR_HOLD_ONLY_LISTED = 'Only listed (active or paused) cars can be put on hold.',
+	SELF_LIKE_DENIED = 'You cannot like yourself.',
+	LIKE_BLOCKED = 'You are not allowed to like this (blocked by the owner).',
 	COMMENT_BLOCKED = 'You are not allowed to comment here (blocked by the owner).',
 	ARTICLE_REMOVE_ONLY_DELETED = 'Only deleted articles can be removed permanently. Delete the article first.',
 	ARTICLE_IMAGES_NOT_ALLOWED = 'Only agents and admins can upload article images.',
