@@ -42,4 +42,7 @@ export class Member {
 	@Field(() => Date, { nullable: true }) deletedAt?: Date;
 	@Field(() => Date) createdAt: Date;
 	@Field(() => Date) updatedAt: Date;
+
+	/** JWT, only returned by signup and login. The client sends it back as "Authorization: Bearer <token>" */
+	@Field(() => String, { nullable: true }) accessToken?: string;
 }

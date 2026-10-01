@@ -1,13 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { compare, hash } from 'bcryptjs';
 import { Model } from 'mongoose';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { Member } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Message } from '../../libs/enums/common.enum';
-
-const SALT_ROUNDS = 10;
+import { AuthService } from '../auth/auth.service';
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {
@@ -18,14 +16,17 @@ const DUPLICATE_MESSAGES: Record<string, Message> = {
 
 @Injectable()
 export class MemberService {
-	constructor(@InjectModel('Member') private readonly memberModel: Model<Member>) {}
+	constructor(
+		@InjectModel('Member') private readonly memberModel: Model<Member>,
+		private readonly authService: AuthService,
+	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
 		const isAgent = input.memberType === MemberType.AGENT;
 
 		const data = {
 			...input,
-			memberPassword: await hash(input.memberPassword, SALT_ROUNDS),
+			memberPassword: await this.authService.hashPassword(input.memberPassword),
 			// agents wait for admin approval before they can post cars
 			memberStatus: isAgent ? MemberStatus.PENDING : MemberStatus.ACTIVE,
 			// store digits only, so "123-45-67890" and "1234567890" hit the same unique index
@@ -43,6 +44,7 @@ export class MemberService {
 			// memberPassword has select: false for queries, but create() still returns it
 			const member: Member & { memberPassword?: string } = created.toObject();
 			delete member.memberPassword;
+			member.accessToken = await this.authService.createToken(member);
 			return member;
 		} catch (err: any) {
 			if (err?.code === 11000) {
@@ -66,7 +68,7 @@ export class MemberService {
 		if (!found || found.memberStatus === MemberStatus.DELETE) {
 			throw new BadRequestException(Message.WRONG_LOGIN);
 		}
-		const isMatch = await compare(input.memberPassword, found.memberPassword);
+		const isMatch = await this.authService.comparePassword(input.memberPassword, found.memberPassword);
 		if (!isMatch) throw new BadRequestException(Message.WRONG_LOGIN);
 
 		// PENDING / REJECTED agents may log in to see their application status; posting cars is checked elsewhere
@@ -76,6 +78,6 @@ export class MemberService {
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { memberPassword, ...member } = found;
-		return member;
+		return { ...member, accessToken: await this.authService.createToken(member) };
 	}
 }
