@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { Member } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
@@ -81,8 +81,8 @@ export class MemberService {
 		return { ...member, accessToken: await this.authService.createToken(member) };
 	}
 
-	public async updateMember(): Promise<string> {
-		return 'updateMember executed';
+	public async updateMember(memberId: Types.ObjectId): Promise<string> {
+		return `updateMember executed for ${memberId}`;
 	}
 
 	public async getMember(): Promise<string> {

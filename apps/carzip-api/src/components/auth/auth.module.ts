@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { MongooseModule } from '@nestjs/mongoose';
+import MemberSchema from '../../schemas/Member.model';
 import { AuthService } from './auth.service';
 
 @Module({
 	imports: [
+		// guards check the member's current status and role in the DB, not only the token
+		MongooseModule.forFeature([{ name: 'Member', schema: MemberSchema }]),
 		// registerAsync: read SECRET_TOKEN when the app starts, after ConfigModule has loaded .env.
 		// JwtModule.register({ secret: process.env.SECRET_TOKEN }) would run at import time and get undefined.
 		JwtModule.registerAsync({
