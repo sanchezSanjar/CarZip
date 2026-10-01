@@ -184,7 +184,7 @@ export class MemberService {
 	 * Public profile. Guests and other members see ACTIVE members only, without private fields.
 	 * The member themself and admins see everything (admins also non-ACTIVE members).
 	 */
-	public async getMember(viewer: AuthMemberData | null, targetId: Types.ObjectId): Promise<Member> {
+	public async getMember(targetId: Types.ObjectId, viewer: AuthMemberData | null): Promise<Member> {
 		const isAdmin = viewer?.memberType === MemberType.ADMIN;
 		const isSelf = !!viewer?._id.equals(targetId);
 		const filter = isAdmin || isSelf ? { _id: targetId } : { _id: targetId, memberStatus: MemberStatus.ACTIVE };

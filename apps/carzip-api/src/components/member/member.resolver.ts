@@ -56,10 +56,10 @@ export class MemberResolver {
 	@UseGuards(WithoutGuard)
 	@Query(() => Member)
 	public async getMember(
-		@Args('memberId') memberId: string,
+		@Args('targetId') targetId: string, // the profile being viewed (memberId elsewhere = the logged-in member)
 		@AuthMember() authMember: AuthMemberData | null,
 	): Promise<Member> {
-		return this.memberService.getMember(authMember, shapeIntoMongoObjectId(memberId));
+		return this.memberService.getMember(shapeIntoMongoObjectId(targetId), authMember);
 	}
 
 	// Public: the dealer directory
