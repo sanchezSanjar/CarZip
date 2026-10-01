@@ -4,7 +4,7 @@ import { Types } from 'mongoose';
 import { CarService } from './car.service';
 import { Car, Cars, CarsPage } from '../../libs/dto/car/car';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
-import { CarUpdate } from '../../libs/dto/car/car.update';
+import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -60,6 +60,13 @@ export class CarResolver {
 	@Query(() => CarsPage)
 	public async getAllCarsByAdmin(@Args('input') input: AllCarsInquiry): Promise<CarsPage> {
 		return this.carService.getAllCarsByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Car)
+	public async updateCarByAdmin(@Args('input') input: CarUpdateByAdmin): Promise<Car> {
+		return this.carService.updateCarByAdmin(input);
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view

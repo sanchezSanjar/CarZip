@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	InternalServerErrorException,
 	Logger,
@@ -9,7 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Error as MongooseError, Model, Types } from 'mongoose';
 import { AgentPublic, Car, Cars, CarsPage } from '../../libs/dto/car/car';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
-import { CarUpdate } from '../../libs/dto/car/car.update';
+import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Member } from '../../libs/dto/member/member';
@@ -94,6 +95,10 @@ export class CarService {
 		);
 		const newStatus = input.carStatus && input.carStatus !== car.carStatus ? input.carStatus : undefined;
 		if (!Object.keys(changes).length && !newStatus) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+		// an ADMIN hold: the dealer may fix the listing or delete it, but only an admin lifts the hold
+		if (car.carHoldReason && newStatus === CarStatus.ACTIVE) {
+			throw new ForbiddenException(`${Message.CAR_HELD_BY_ADMIN}: ${car.carHoldReason}`);
+		}
 
 		const $set: Record<string, unknown> = { ...changes };
 		const $unset: Record<string, ''> = {};
@@ -247,6 +252,55 @@ export class CarService {
 			])
 			.exec();
 		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/**
+	 * ADMIN moderation of any car. memberCars counts every car that is not DELETE,
+	 * so DELETE lowers it and restoring a deleted car raises it again.
+	 */
+	public async updateCarByAdmin(input: CarUpdateByAdmin): Promise<Car> {
+		const carId = shapeIntoMongoObjectId(input._id);
+		const car = await this.carModel.findById(carId).lean<Car>().exec();
+		if (!car) throw new NotFoundException(Message.NO_DATA_FOUND);
+
+		const $set: Record<string, unknown> = { carStatus: input.carStatus };
+		const $unset: Record<string, ''> = {};
+		switch (input.carStatus) {
+			case CarStatus.HOLD:
+				if (car.carStatus === CarStatus.SOLD || car.carStatus === CarStatus.DELETE) {
+					throw new BadRequestException(Message.CAR_HOLD_ONLY_LISTED);
+				}
+				$set.carHoldReason = input.carHoldReason;
+				break;
+			case CarStatus.ACTIVE:
+				if (car.carStatus === CarStatus.SOLD) throw new BadRequestException(Message.CAR_SOLD_FINAL);
+				$unset.carHoldReason = '';
+				$unset.deletedAt = '';
+				break;
+			case CarStatus.DELETE:
+				if (car.carStatus === CarStatus.DELETE) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+				$set.deletedAt = new Date();
+				break;
+		}
+		if (car.carStatus === input.carStatus && input.carStatus === CarStatus.ACTIVE) {
+			throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+		}
+
+		// only if the status didn't change meanwhile: the counter below can't run twice
+		const updated = await this.carModel
+			.findOneAndUpdate({ _id: carId, carStatus: car.carStatus }, { $set, $unset }, { new: true })
+			.lean<Car>()
+			.exec();
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+
+		const wasDeleted = car.carStatus === CarStatus.DELETE;
+		const isDeleted = input.carStatus === CarStatus.DELETE;
+		if (wasDeleted !== isDeleted) {
+			await this.memberModel.updateOne({ _id: car.memberId }, { $inc: { memberCars: isDeleted ? -1 : 1 } });
+		}
+		// TODO(notification module): tell the dealer their car was held / deleted / restored
+		// TODO(test-drive module): HOLD / DELETE -> open test drives CANCEL
+		return updated;
 	}
 
 	/**

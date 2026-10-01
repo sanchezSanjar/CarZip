@@ -87,6 +87,8 @@ const CarSchema = new Schema(
 
 		memberId: { type: Schema.Types.ObjectId, required: true, ref: 'Member' }, // always an AGENT
 
+		// set only when an ADMIN put the car on HOLD: shown to the dealer, who can't re-activate it until an admin does
+		carHoldReason: { type: String },
 		soldAt: { type: Date },
 		deletedAt: { type: Date },
 	},

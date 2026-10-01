@@ -1,6 +1,8 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import {
 	ArrayMaxSize,
+	IsNotEmpty,
+	ValidateIf,
 	ArrayMinSize,
 	IsBoolean,
 	IsIn,
@@ -164,4 +166,28 @@ export class CarUpdate {
 	@IsIn(Object.values(CarOption), { each: true })
 	@Field(() => [CarOption], { nullable: true })
 	carOptions?: CarOption[];
+}
+
+/**
+ * updateCarByAdmin input: moderation only (Admin flowchart "Cars": HOLD / DELETE, Car Listing: "ADMIN can HOLD / DELETE any car").
+ * - HOLD: hide the car, carHoldReason required. The dealer sees the reason and can't re-activate it themself
+ * - ACTIVE: lift an admin hold, or restore a deleted car
+ * - DELETE: remove the car (deletedAt, memberCars -1)
+ * Admins never edit a dealer's listing (title, prices...).
+ */
+@InputType()
+export class CarUpdateByAdmin {
+	@IsMongoId()
+	@Field(() => String)
+	_id: string;
+
+	@IsIn([CarStatus.ACTIVE, CarStatus.HOLD, CarStatus.DELETE])
+	@Field(() => CarStatus)
+	carStatus: CarStatus;
+
+	@ValidateIf((o: CarUpdateByAdmin) => o.carStatus === CarStatus.HOLD)
+	@Length(5, 300)
+	@IsNotEmpty({ message: 'Tell the dealer why the car is on hold' })
+	@Field(() => String, { nullable: true })
+	carHoldReason?: string;
 }

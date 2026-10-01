@@ -65,6 +65,8 @@ export class Car {
 	@Field(() => String) memberId: string;
 	@Field(() => Date, { nullable: true }) soldAt?: Date;
 	@Field(() => Date, { nullable: true }) deletedAt?: Date; // only admins can see deleted cars
+	/** why an ADMIN put the car on HOLD (only the owner and admins can see a HOLD car) */
+	@Field(() => String, { nullable: true }) carHoldReason?: string;
 	@Field(() => Date) createdAt: Date;
 	@Field(() => Date) updatedAt: Date;
 
