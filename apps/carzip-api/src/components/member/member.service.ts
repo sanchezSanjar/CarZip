@@ -17,6 +17,9 @@ import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
+import { CarService } from '../car/car.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
@@ -67,6 +70,8 @@ export class MemberService {
 		private readonly authService: AuthService,
 		private readonly otpService: OtpService,
 		private readonly viewService: ViewService,
+		private readonly carService: CarService,
+		private readonly notificationService: NotificationService,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -97,6 +102,15 @@ export class MemberService {
 			// the client shows "under review" from memberStatus
 			if (member.memberStatus === MemberStatus.ACTIVE) {
 				member.accessToken = await this.authService.createToken(member);
+			} else if (isAgent) {
+				// Signup flowchart: a new agent application -> every admin is notified
+				await this.notificationService.notifyAdmins({
+					notificationType: NotificationType.AGENT_APPLICATION,
+					notificationGroup: NotificationGroup.MEMBER,
+					notificationTitle: 'New agent application',
+					notificationDesc: `${member.memberNick} (${member.agentCompany}) is waiting for review.`,
+					authorId: shapeIntoMongoObjectId(member._id),
+				});
 			}
 			return member;
 		} catch (err: any) {
@@ -306,8 +320,27 @@ export class MemberService {
 			.exec();
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
 
-		// TODO(notification module): AGENT_APPROVED / AGENT_REJECTED notification to the agent
-		// TODO(car module): agent BLOCK / DELETE -> their cars HOLD / DELETE
+		// Admin flowchart: the agent learns the result of their application
+		if ($set.agentApprovedAt || input.memberStatus === MemberStatus.REJECTED) {
+			const approved = !!$set.agentApprovedAt;
+			await this.notificationService.notify({
+				notificationType: approved ? NotificationType.AGENT_APPROVED : NotificationType.AGENT_REJECTED,
+				notificationGroup: NotificationGroup.MEMBER,
+				notificationTitle: approved ? 'Your agent account is approved' : 'Your agent application was rejected',
+				notificationDesc: approved ? 'You can now post cars on CarZip.' : input.agentRejectReason,
+				authorId: admin._id,
+				receiverId: targetId,
+			});
+		}
+
+		// Admin flowchart: a blocked agent's cars leave search, a deleted agent's cars are deleted
+		if (target.memberType === MemberType.AGENT) {
+			if (input.memberStatus === MemberStatus.BLOCK) await this.carService.holdAgentCars(targetId);
+			if (input.memberStatus === MemberStatus.DELETE) {
+				const deletedCars = await this.carService.deleteAgentCars(targetId);
+				updated.memberCars -= deletedCars; // the response shows the counter after the cars were removed
+			}
+		}
 		return updated;
 	}
 
