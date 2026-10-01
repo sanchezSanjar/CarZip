@@ -63,6 +63,11 @@ export class UploadService {
 		return saved;
 	}
 
+	/** true only for a main image URL that our upload API produced for this target */
+	public isUploadedImage(url: string, target: UploadTarget): boolean {
+		return this.storage.isOwnUrl(url, target);
+	}
+
 	private async process(buffer: Buffer, target: UploadTarget): Promise<ProcessedImage> {
 		let format: string | undefined;
 		try {

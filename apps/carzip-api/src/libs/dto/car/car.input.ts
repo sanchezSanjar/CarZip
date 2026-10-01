@@ -284,7 +284,9 @@ export class CarInput {
 
 	@ArrayMinSize(1)
 	@ArrayMaxSize(20)
-	@IsUrl({}, { each: true })
+	// URLs from POST /upload/images (target=car). CarService also checks they are OUR uploads.
+	// require_tld: false so local-storage URLs (http://localhost:3007/uploads/...) pass in development
+	@IsUrl({ require_tld: false, require_protocol: true, protocols: ['http', 'https'] }, { each: true })
 	@Field(() => [String])
 	carImages: string[];
 

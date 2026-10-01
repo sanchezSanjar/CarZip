@@ -49,6 +49,8 @@ export class Car {
 	/** USD. null for DOMESTIC-only cars */
 	@Field(() => Number, { nullable: true }) carPriceUsd?: number;
 	@Field(() => Number, { nullable: true }) carRentPrice?: number;
+	/** when the dealer accepted "export is fully my responsibility" (EXPORT / BOTH): show the export disclaimer */
+	@Field(() => Date, { nullable: true }) carExportAgreedAt?: Date;
 	@Field(() => [String]) carImages: string[];
 	@Field(() => String, { nullable: true }) carDesc?: string;
 	@Field(() => [CarOption]) carOptions: CarOption[];

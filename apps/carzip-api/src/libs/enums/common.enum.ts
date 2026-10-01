@@ -44,4 +44,5 @@ export enum Message {
 	INVALID_IMAGE = 'The file is not a valid image.',
 	UPLOAD_FAILED = 'Upload failed!',
 	CAR_IMAGES_AGENT_ONLY = 'Only agents can upload car photos.',
+	CAR_IMAGES_NOT_UPLOADED = 'Car photos must be uploaded through CarZip first (POST /upload/images).',
 }

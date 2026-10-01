@@ -11,7 +11,12 @@ export abstract class StorageService {
 	/** saves the file under key (e.g. "car/<uuid>.webp") and returns its public URL */
 	public abstract save(key: string, data: Buffer, contentType: string): Promise<string>;
 	public abstract delete(key: string): Promise<void>;
+	/** true if url is a file this storage serves under folder (e.g. "car") */
+	public abstract isOwnUrl(url: string, folder: string): boolean;
 }
+
+// what UploadService names a main image: <uuid>.webp (thumbnails "<uuid>_thumb.webp" are for lists, not listings)
+const UPLOADED_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/;
 
 /** local disk: ./uploads, served by main.ts at /uploads */
 @Injectable()
@@ -27,6 +32,11 @@ export class LocalStorageService extends StorageService {
 
 	public async delete(key: string): Promise<void> {
 		await unlink(this.pathOf(key)).catch(() => undefined);
+	}
+
+	public isOwnUrl(url: string, folder: string): boolean {
+		const prefix = `${this.publicBaseUrl()}/uploads/${folder}/`;
+		return url.startsWith(prefix) && UPLOADED_FILE_NAME.test(url.slice(prefix.length));
 	}
 
 	/** keys are built by the server, but never trust a path: it must stay inside ./uploads */
