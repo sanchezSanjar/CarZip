@@ -2,7 +2,14 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { MemberService } from './member.service';
 import { Member, Members } from '../../libs/dto/member/member';
-import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../libs/dto/member/member.input';
+import {
+	AgentsInquiry,
+	ChangePasswordInput,
+	ChangePhoneInput,
+	LoginInput,
+	MemberInput,
+	MembersInquiry,
+} from '../../libs/dto/member/member.input';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -50,6 +57,26 @@ export class MemberResolver {
 		@AuthMember() authMember: AuthMemberData,
 	): Promise<Member> {
 		return this.memberService.updateMember(authMember, input);
+	}
+
+	// Authenticated: returns the member with a NEW token (other sessions are logged out)
+	@UseGuards(AuthGuard)
+	@Mutation(() => Member)
+	public async changePassword(
+		@Args('input') input: ChangePasswordInput,
+		@AuthMember() authMember: AuthMemberData,
+	): Promise<Member> {
+		return this.memberService.changePassword(authMember, input);
+	}
+
+	// Authenticated: after requestOtp + verifyOtp with otpPurpose CHANGE_PHONE for the new number
+	@UseGuards(AuthGuard)
+	@Mutation(() => Member)
+	public async changeMemberPhone(
+		@Args('input') input: ChangePhoneInput,
+		@AuthMember() authMember: AuthMemberData,
+	): Promise<Member> {
+		return this.memberService.changeMemberPhone(authMember, input);
 	}
 
 	// Public (guest or logged in): logged-in viewers who are the member or an admin see private fields too

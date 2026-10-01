@@ -4,8 +4,8 @@ import { OtpPurpose } from '../../enums/otp.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 const PHONE_REGEX = /^01[016789]\d{7,8}$/;
-// CHANGE_PHONE comes with updateMember later
-const SUPPORTED_PURPOSES = [OtpPurpose.SIGNUP, OtpPurpose.RESET_PASSWORD];
+// SIGNUP and RESET_PASSWORD: logged out. CHANGE_PHONE: logged in, otpPhone = the NEW number
+const SUPPORTED_PURPOSES = [OtpPurpose.SIGNUP, OtpPurpose.RESET_PASSWORD, OtpPurpose.CHANGE_PHONE];
 
 @InputType()
 export class RequestOtpInput {

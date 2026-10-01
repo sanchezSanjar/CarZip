@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { Model, Types } from 'mongoose';
@@ -10,6 +10,7 @@ import { Member } from '../../libs/dto/member/member';
 import { OtpPurpose, OtpStatus } from '../../libs/enums/otp.enum';
 import { MemberStatus } from '../../libs/enums/member.enum';
 import { Message } from '../../libs/enums/common.enum';
+import { AuthMemberData } from '../../libs/types/auth';
 
 const MINUTE = 60 * 1000;
 const CODE_TTL = 3 * MINUTE; // the SMS code
@@ -46,13 +47,22 @@ export class OtpService {
 		private readonly authService: AuthService,
 	) {}
 
-	public async requestOtp(input: RequestOtpInput, ip: string): Promise<string> {
+	/**
+	 * viewer: the logged-in member, or null. CHANGE_PHONE needs one (the code is tied to that member),
+	 * SIGNUP and RESET_PASSWORD are used while logged out.
+	 */
+	public async requestOtp(input: RequestOtpInput, ip: string, viewer: AuthMemberData | null): Promise<string> {
 		const { otpPhone, otpPurpose } = input;
+		if (otpPurpose === OtpPurpose.CHANGE_PHONE && !viewer) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
 		await this.checkRateLimit(otpPhone, otpPurpose, ip);
 
 		let memberId: Types.ObjectId | undefined;
 		if (otpPurpose === OtpPurpose.SIGNUP) {
 			if (await this.memberModel.exists({ memberPhone: otpPhone })) throw new BadRequestException(Message.USED_PHONE);
+		} else if (otpPurpose === OtpPurpose.CHANGE_PHONE) {
+			// the NEW number: nobody (the member included) may already use it
+			if (await this.memberModel.exists({ memberPhone: otpPhone })) throw new BadRequestException(Message.USED_PHONE);
+			memberId = viewer!._id;
 		} else {
 			const member = await this.memberModel
 				.findOne({ memberPhone: otpPhone })
@@ -80,7 +90,7 @@ export class OtpService {
 		});
 
 		const text = `[CarZip] 인증번호 ${code} (3분 이내 입력)`;
-		if (otpPurpose === OtpPurpose.SIGNUP) {
+		if (otpPurpose !== OtpPurpose.RESET_PASSWORD) {
 			await this.smsService.sendSms(otpPhone, text);
 			return Message.OTP_SENT;
 		}
@@ -90,16 +100,18 @@ export class OtpService {
 		return Message.OTP_SENT_IF_REGISTERED;
 	}
 
-	public async verifyOtp(input: VerifyOtpInput): Promise<VerifyOtpResult> {
+	public async verifyOtp(input: VerifyOtpInput, viewer: AuthMemberData | null): Promise<VerifyOtpResult> {
 		const { otpPhone, otpPurpose, otpCode } = input;
+		const filter: Record<string, unknown> = { otpPhone, otpPurpose, otpStatus: OtpStatus.PENDING };
+		if (otpPurpose === OtpPurpose.CHANGE_PHONE) {
+			// only the member who asked for the code can use it (nobody else can even burn its attempts)
+			if (!viewer) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
+			filter.memberId = viewer._id;
+		}
 
 		// count the attempt BEFORE comparing, atomically: parallel guesses can't get past MAX_ATTEMPTS
 		const otp = await this.otpModel
-			.findOneAndUpdate(
-				{ otpPhone, otpPurpose, otpStatus: OtpStatus.PENDING },
-				{ $inc: { otpAttempts: 1 } },
-				{ sort: { createdAt: -1 }, new: true },
-			)
+			.findOneAndUpdate(filter, { $inc: { otpAttempts: 1 } }, { sort: { createdAt: -1 }, new: true })
 			.select('+otpCodeHash')
 			.lean<Otp>();
 		if (!otp) throw new BadRequestException(Message.OTP_EXPIRED);
@@ -118,7 +130,8 @@ export class OtpService {
 		}
 
 		const verified = { otpStatus: OtpStatus.VERIFIED, verifiedAt: new Date() };
-		if (otpPurpose === OtpPurpose.SIGNUP) {
+		// SIGNUP / CHANGE_PHONE: the phone is now proven; signup / changeMemberPhone use it next
+		if (otpPurpose !== OtpPurpose.RESET_PASSWORD) {
 			await this.otpModel.updateOne({ _id: otp._id, otpStatus: OtpStatus.PENDING }, verified);
 			return { message: Message.OTP_VERIFIED };
 		}
@@ -157,21 +170,32 @@ export class OtpService {
 		return Message.PASSWORD_RESET_DONE;
 	}
 
-	/** signup: the phone must have been verified by SMS in the last 15 minutes */
-	public async assertPhoneVerified(otpPhone: string): Promise<void> {
+	/**
+	 * signup / changeMemberPhone: the phone must have been verified by SMS in the last 15 minutes.
+	 * CHANGE_PHONE: by THIS member (memberId), so a code verified by someone else doesn't count.
+	 */
+	public async assertPhoneVerified(
+		otpPhone: string,
+		otpPurpose: OtpPurpose.SIGNUP | OtpPurpose.CHANGE_PHONE = OtpPurpose.SIGNUP,
+		memberId?: Types.ObjectId,
+	): Promise<void> {
 		const verified = await this.otpModel.exists({
 			otpPhone,
-			otpPurpose: OtpPurpose.SIGNUP,
+			otpPurpose,
 			otpStatus: OtpStatus.VERIFIED,
 			verifiedAt: { $gte: new Date(Date.now() - SIGNUP_VERIFIED_WINDOW) },
+			...(memberId && { memberId }),
 		});
 		if (!verified) throw new BadRequestException(Message.PHONE_NOT_VERIFIED);
 	}
 
-	/** signup succeeded: the verification can't be used for another account */
-	public async markPhoneUsed(otpPhone: string): Promise<void> {
+	/** the verification was used (account created / phone changed): it can't be used again */
+	public async markPhoneUsed(
+		otpPhone: string,
+		otpPurpose: OtpPurpose.SIGNUP | OtpPurpose.CHANGE_PHONE = OtpPurpose.SIGNUP,
+	): Promise<void> {
 		await this.otpModel.updateMany(
-			{ otpPhone, otpPurpose: OtpPurpose.SIGNUP, otpStatus: OtpStatus.VERIFIED },
+			{ otpPhone, otpPurpose, otpStatus: OtpStatus.VERIFIED },
 			{ otpStatus: OtpStatus.USED },
 		);
 	}

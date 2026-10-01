@@ -16,7 +16,7 @@ import { Type } from 'class-transformer';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
 import { availableAgentSorts, availableMemberSorts } from '../../config';
-import { Direction } from '../../enums/common.enum';
+import { Direction, Message } from '../../enums/common.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 export const PHONE_REGEX = /^01[016789]\d{7,8}$/;
@@ -222,4 +222,33 @@ export class MembersInquiry {
 	@Type(() => MISearch)
 	@Field(() => MISearch, { nullable: true })
 	search?: MISearch;
+}
+
+/** changePassword input (logged in). Forgot the password? That is resetPassword, with an SMS code. */
+@InputType()
+export class ChangePasswordInput {
+	@Length(6, 30)
+	@Field(() => String)
+	oldPassword: string;
+
+	@Length(6, 30)
+	@Satisfies<ChangePasswordInput>((o, v) => v !== o.oldPassword, Message.SAME_PASSWORD)
+	@Field(() => String)
+	newPassword: string;
+}
+
+/**
+ * changeMemberPhone input (logged in), the last of 3 steps:
+ * 1. requestOtp(otpPhone: newPhone, otpPurpose: CHANGE_PHONE)  2. verifyOtp(... code)  3. this
+ * The current password is required too: a stolen session alone can't move the account to another phone.
+ */
+@InputType()
+export class ChangePhoneInput {
+	@Matches(PHONE_REGEX, { message: 'Phone must look like 01012345678' })
+	@Field(() => String)
+	newPhone: string;
+
+	@Length(6, 30)
+	@Field(() => String)
+	memberPassword: string;
 }

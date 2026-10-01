@@ -35,6 +35,8 @@ export enum Message {
 	UPDATE_FAILED = 'Update failed!',
 	NOTHING_TO_UPDATE = 'Nothing to update.',
 	NO_DATA_FOUND = 'No data found!',
+	WRONG_PASSWORD = 'Wrong password.',
+	SAME_PASSWORD = 'The new password must be different from the current one.',
 	INVALID_ID = 'Invalid id!',
 	ADMIN_CANNOT_UPDATE_SELF = 'Admins cannot change their own account here.',
 	ADMIN_CANNOT_UPDATE_ADMIN = 'Admin accounts cannot be changed here.',

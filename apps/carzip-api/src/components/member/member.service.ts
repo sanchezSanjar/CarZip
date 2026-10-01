@@ -7,7 +7,15 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../libs/dto/member/member.input';
+import {
+	AgentsInquiry,
+	ChangePasswordInput,
+	ChangePhoneInput,
+	LoginInput,
+	MemberInput,
+	MembersInquiry,
+} from '../../libs/dto/member/member.input';
+import { OtpPurpose } from '../../libs/enums/otp.enum';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
 import { Member, Members } from '../../libs/dto/member/member';
@@ -117,6 +125,64 @@ export class MemberService {
 			this.throwIfDuplicate(err, Message.CREATE_FAILED);
 			console.log('Error, Service.signup:', err.message);
 			throw new InternalServerErrorException(Message.CREATE_FAILED);
+		}
+	}
+
+	/**
+	 * Logged-in password change: the old password must be right. passwordChangedAt = now, so every OTHER
+	 * session (other phones, a stolen token) is logged out; this device gets a fresh token in the response.
+	 */
+	public async changePassword(authMember: AuthMemberData, input: ChangePasswordInput): Promise<Member> {
+		await this.assertPassword(authMember._id, input.oldPassword);
+
+		const updated = await this.memberModel
+			.findOneAndUpdate(
+				{ _id: authMember._id, memberStatus: MemberStatus.ACTIVE },
+				{ memberPassword: await this.authService.hashPassword(input.newPassword), passwordChangedAt: new Date() },
+				{ new: true },
+			)
+			.lean<Member>()
+			.exec();
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+		return { ...updated, accessToken: await this.authService.createToken(updated) };
+	}
+
+	/**
+	 * Step 3 of the phone change: the NEW number was verified by SMS (CHANGE_PHONE, by this member, in the
+	 * last 15 min) and the current password is right. Then login by phone and "forgot password" use the new number.
+	 */
+	public async changeMemberPhone(authMember: AuthMemberData, input: ChangePhoneInput): Promise<Member> {
+		await this.assertPassword(authMember._id, input.memberPassword);
+		await this.otpService.assertPhoneVerified(input.newPhone, OtpPurpose.CHANGE_PHONE, authMember._id);
+
+		let updated: Member | null;
+		try {
+			updated = await this.memberModel
+				.findOneAndUpdate(
+					{ _id: authMember._id, memberStatus: MemberStatus.ACTIVE },
+					{ memberPhone: input.newPhone },
+					{ new: true },
+				)
+				.lean<Member>()
+				.exec();
+		} catch (err: any) {
+			this.throwIfDuplicate(err, Message.UPDATE_FAILED); // someone took the number meanwhile
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
+		await this.otpService.markPhoneUsed(input.newPhone, OtpPurpose.CHANGE_PHONE);
+		return updated;
+	}
+
+	/** the member's CURRENT password, for sensitive changes while logged in */
+	private async assertPassword(memberId: Types.ObjectId, password: string): Promise<void> {
+		const found = await this.memberModel
+			.findById(memberId)
+			.select('+memberPassword')
+			.lean<Member & { memberPassword: string }>()
+			.exec();
+		if (!found || !(await this.authService.comparePassword(password, found.memberPassword))) {
+			throw new BadRequestException(Message.WRONG_PASSWORD);
 		}
 	}
 
