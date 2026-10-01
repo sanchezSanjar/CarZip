@@ -19,6 +19,8 @@ const OtpSchema = new Schema(
 
 // rate limiting: "how many codes did this phone get in the last hour?"
 OtpSchema.index({ otpPhone: 1, otpPurpose: 1, createdAt: -1 });
+// rate limiting per IP: "how many codes did this IP request in the last hour?"
+OtpSchema.index({ otpIp: 1, createdAt: -1 });
 // step 3 lookup by reset token
 OtpSchema.index({ resetTokenHash: 1 }, { sparse: true });
 // auto-delete after 24h. TTL is on createdAt, not expiresAt, so rate-limit history survives

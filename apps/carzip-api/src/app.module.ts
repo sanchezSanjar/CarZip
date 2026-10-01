@@ -1,4 +1,4 @@
-import { HttpException, Logger, Module } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppResolver } from './app.resolver';
@@ -30,10 +30,14 @@ const logger = new Logger('GraphQLError');
 			 * Stack traces never leave the server.
 			 */
 			formatError: (formattedError: GraphQLFormattedError, error: unknown): GraphQLFormattedError => {
-				const code = (formattedError.extensions?.code as string) ?? 'INTERNAL_SERVER_ERROR';
+				let code = (formattedError.extensions?.code as string) ?? 'INTERNAL_SERVER_ERROR';
 				const original = unwrapResolverError(error);
 
 				if (original instanceof HttpException) {
+					// Apollo only knows a few codes (400, 401, 403...). Others, like 429, would say INTERNAL_SERVER_ERROR
+					if (code === 'INTERNAL_SERVER_ERROR' && original.getStatus() !== 500) {
+						code = HttpStatus[original.getStatus()] ?? code;
+					}
 					const response = original.getResponse();
 					// ValidationPipe puts every failed rule in response.message as an array
 					const raw = typeof response === 'object' ? (response as { message?: string | string[] }).message : response;

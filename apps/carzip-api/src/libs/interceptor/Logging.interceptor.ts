@@ -3,7 +3,7 @@ import { GqlContextType, GqlExecutionContext } from '@nestjs/graphql';
 import { Observable, tap } from 'rxjs';
 
 // never write these to the logs, at any depth of the input
-const SECRET_KEYS = ['memberPassword', 'password', 'accessToken', 'token'];
+const SECRET_KEYS = ['memberPassword', 'password', 'newPassword', 'accessToken', 'token', 'resetToken', 'otpCode'];
 const MAX_LENGTH = 200; // long responses (car lists) are cut, the log is for tracing, not for data
 
 /**

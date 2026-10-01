@@ -6,6 +6,7 @@ import { Member } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
+import { OtpService } from '../otp/otp.service';
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {
@@ -30,9 +31,12 @@ export class MemberService {
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private readonly authService: AuthService,
+		private readonly otpService: OtpService,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
+		// the phone must be verified by SMS first (requestOtp + verifyOtp with purpose SIGNUP)
+		await this.otpService.assertPhoneVerified(input.memberPhone);
 		const isAgent = input.memberType === MemberType.AGENT;
 
 		const data = {
@@ -50,6 +54,7 @@ export class MemberService {
 
 		try {
 			const created = await this.memberModel.create(data);
+			await this.otpService.markPhoneUsed(input.memberPhone);
 			// memberPassword has select: false for queries, but create() still returns it
 			const member: Member & { memberPassword?: string } = created.toObject();
 			delete member.memberPassword;
