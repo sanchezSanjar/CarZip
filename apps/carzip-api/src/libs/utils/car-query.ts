@@ -3,6 +3,7 @@ import { PipelineStage, Types } from 'mongoose';
 import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
 import { Direction } from '../enums/common.enum';
 import { CarsInquiry, NumberRange } from '../dto/car/car.input';
+import { lookupPublicMember } from './lookup';
 
 // s / d: the sort the cursor was made for. A cursor only makes sense for that same sort:
 // "after price 21,000,000" means nothing when the list is sorted by newest.
@@ -46,36 +47,8 @@ function range(r?: NumberRange) {
 	return q;
 }
 
-/**
- * Attaches the car's agent as agentData with PUBLIC fields only (= AgentPublic).
- * A plain $lookup would copy the whole member, password hash included: aggregate() ignores select: false.
- */
-export const lookupAgentData: PipelineStage.FacetPipelineStage[] = [
-	{
-		$lookup: {
-			from: 'members',
-			localField: 'memberId',
-			foreignField: '_id',
-			as: 'agentData',
-			pipeline: [
-				{
-					$project: {
-						memberNick: 1,
-						memberImage: 1,
-						agentCompany: 1,
-						memberRank: 1,
-						contactPhone: 1,
-						contactEmail: 1,
-						contactTelegram: 1,
-						contactWhatsapp: 1,
-						contactKakao: 1,
-					},
-				},
-			],
-		},
-	},
-	{ $unwind: { path: '$agentData', preserveNullAndEmptyArrays: true } },
-];
+/** the car's agent as agentData, PUBLIC fields only (see libs/utils/lookup.ts) */
+export const lookupAgentData = lookupPublicMember('agentData');
 
 /** Builds the full aggregation for getCars. Service calls: model.aggregate(pipeline), then toPage(). */
 export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {

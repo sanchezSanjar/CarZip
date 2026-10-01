@@ -59,9 +59,12 @@ export class UploadController {
 		return this.uploadService.uploadImages(files, input.target);
 	}
 
-	/** Car Listing flowchart: only agents post cars, so only agents (and admins) upload car photos */
+	/** only agents post cars and only agents / admins write articles, so only they upload those images */
 	private checkTarget(target: UploadTarget, authMember: AuthMemberData): void {
-		const canUploadCars = authMember.memberType === MemberType.AGENT || authMember.memberType === MemberType.ADMIN;
-		if (target === UploadTarget.CAR && !canUploadCars) throw new ForbiddenException(Message.CAR_IMAGES_AGENT_ONLY);
+		const isAgentOrAdmin = authMember.memberType === MemberType.AGENT || authMember.memberType === MemberType.ADMIN;
+		if (target === UploadTarget.CAR && !isAgentOrAdmin) throw new ForbiddenException(Message.CAR_IMAGES_AGENT_ONLY);
+		if (target === UploadTarget.ARTICLE && !isAgentOrAdmin) {
+			throw new ForbiddenException(Message.ARTICLE_IMAGES_NOT_ALLOWED);
+		}
 	}
 }

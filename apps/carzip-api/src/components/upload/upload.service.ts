@@ -15,6 +15,10 @@ const SIZES: Record<UploadTarget, { main: sharp.ResizeOptions; thumb: sharp.Resi
 		main: { width: 1600, height: 1200, fit: 'inside', withoutEnlargement: true },
 		thumb: { width: 480, height: 360, fit: 'cover' },
 	},
+	[UploadTarget.ARTICLE]: {
+		main: { width: 1600, height: 1200, fit: 'inside', withoutEnlargement: true },
+		thumb: { width: 480, height: 360, fit: 'cover' },
+	},
 	[UploadTarget.MEMBER]: {
 		main: { width: 512, height: 512, fit: 'cover' },
 		thumb: { width: 128, height: 128, fit: 'cover' },

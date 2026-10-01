@@ -25,10 +25,10 @@ import { Direction } from '../../libs/enums/common.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { buildCarsPipeline, lookupAgentData, toPage } from '../../libs/utils/car-query';
+import { PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
 
 // what a car page shows about its agent (= AgentPublic). Verification data is never selected.
-const AGENT_PUBLIC_FIELDS =
-	'memberNick memberImage agentCompany memberRank contactPhone contactEmail contactTelegram contactWhatsapp contactKakao';
+const AGENT_PUBLIC_FIELDS = PUBLIC_MEMBER_FIELDS.join(' ');
 
 @Injectable()
 export class CarService {

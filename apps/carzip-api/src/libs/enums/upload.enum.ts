@@ -2,4 +2,5 @@
 export enum UploadTarget {
 	MEMBER = 'member', // profile photo
 	CAR = 'car', // car listing photos (agents only)
+	ARTICLE = 'article', // board article image (agents and admins)
 }
