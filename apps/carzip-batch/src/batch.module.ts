@@ -12,6 +12,12 @@ import NotificationSchema from '@app/common/schemas/Notification.model';
 import BoardArticleSchema from '@app/common/schemas/BoardArticle.model';
 import { TestDriveBatchService } from './test-drive.batch';
 import { UploadBatchService } from './upload.batch';
+import { ReminderBatchService } from './reminder.batch';
+import { CounterBatchService } from './counter.batch';
+import LikeSchema from '@app/common/schemas/Like.model';
+import CommentSchema from '@app/common/schemas/Comment.model';
+import ViewSchema from '@app/common/schemas/View.model';
+import FollowSchema from '@app/common/schemas/Follow.model';
 
 @Module({
 	imports: [
@@ -24,9 +30,13 @@ import { UploadBatchService } from './upload.batch';
 			{ name: 'TestDrive', schema: TestDriveSchema },
 			{ name: 'Notification', schema: NotificationSchema },
 			{ name: 'BoardArticle', schema: BoardArticleSchema },
+			{ name: 'Like', schema: LikeSchema },
+			{ name: 'Comment', schema: CommentSchema },
+			{ name: 'View', schema: ViewSchema },
+			{ name: 'Follow', schema: FollowSchema },
 		]),
 	],
 	controllers: [BatchController],
-	providers: [BatchService, TestDriveBatchService, UploadBatchService],
+	providers: [BatchService, TestDriveBatchService, UploadBatchService, ReminderBatchService, CounterBatchService],
 })
 export class BatchModule {}

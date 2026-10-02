@@ -78,7 +78,12 @@ export class CarService {
 			throw new BadRequestException(Message.CAR_IMAGES_NOT_UPLOADED);
 		}
 
-		const data: Record<string, unknown> = { ...input, memberId, carStatus: CarStatus.ACTIVE };
+		const data: Record<string, unknown> = {
+			...input,
+			memberId,
+			carStatus: CarStatus.ACTIVE,
+			carConfirmedAt: new Date(),
+		};
 		delete data.exportAgreed; // a checkbox, not stored: we store WHEN it was ticked
 		// EXPORT / BOTH: CarInput required exportAgreed === true, record the moment the dealer accepted
 		if (input.carMarket !== CarMarket.DOMESTIC) data.carExportAgreedAt = new Date();
@@ -126,7 +131,8 @@ export class CarService {
 			throw new ForbiddenException(`${Message.CAR_HELD_BY_ADMIN}: ${car.carHoldReason}`);
 		}
 
-		const $set: Record<string, unknown> = { ...changes };
+		// the dealer touched the listing (edit, pause, re-activate...): it counts as current again
+		const $set: Record<string, unknown> = { ...changes, carConfirmedAt: new Date() };
 		const $unset: Record<string, ''> = {};
 		if (Object.keys(changes).length) {
 			if (input.carImages?.some((url) => !this.uploadService.isUploadedImage(url, UploadTarget.CAR))) {
@@ -173,6 +179,23 @@ export class CarService {
 		if (newStatus && newStatus !== CarStatus.ACTIVE) {
 			await this.testDriveService.cancelForCar(carId, CAR_GONE_REASONS[newStatus], memberId);
 		}
+		return updated;
+	}
+
+	/**
+	 * "Still for sale": the dealer confirms an ACTIVE listing is current without editing it
+	 * (the answer to the batch's LISTING_CHECK reminder). Own cars only.
+	 */
+	public async confirmCarListing(memberId: Types.ObjectId, carId: Types.ObjectId): Promise<Car> {
+		const updated = await this.carModel
+			.findOneAndUpdate(
+				{ _id: carId, memberId, carStatus: CarStatus.ACTIVE },
+				{ $set: { carConfirmedAt: new Date() } },
+				{ new: true },
+			)
+			.lean<Car>()
+			.exec();
+		if (!updated) throw new NotFoundException(Message.NO_DATA_FOUND);
 		return updated;
 	}
 

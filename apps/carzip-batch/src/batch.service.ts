@@ -8,6 +8,9 @@ import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 type CarDoc = { carStatus: CarStatus; carRank: number };
 type MemberDoc = { memberType: MemberType; memberStatus: MemberStatus; memberRank: number };
 
+/** batch bookkeeping is not an edit: updatedAt must keep meaning "someone changed this" */
+const NO_TIMESTAMPS = { timestamps: false };
+
 /** a counter in a pipeline update. A missing field counts as 0 (otherwise $add gives null) */
 const counter = (field: string) => ({ $ifNull: [`$${field}`, 0] });
 
@@ -25,36 +28,42 @@ export class BatchService {
 
 	/** reset every rank, including cars/agents that are no longer ACTIVE (otherwise their old rank stays forever) */
 	public async batchRollback(): Promise<void> {
-		await this.carModel.updateMany({ carRank: { $ne: 0 } }, { $set: { carRank: 0 } }).exec();
-		await this.memberModel.updateMany({ memberRank: { $ne: 0 } }, { $set: { memberRank: 0 } }).exec();
+		await this.carModel.updateMany({ carRank: { $ne: 0 } }, { $set: { carRank: 0 } }, NO_TIMESTAMPS).exec();
+		await this.memberModel.updateMany({ memberRank: { $ne: 0 } }, { $set: { memberRank: 0 } }, NO_TIMESTAMPS).exec();
 	}
 
 	/** carRank = likes * 2 + views (only cars on sale) */
 	public async batchTopCars(): Promise<void> {
 		await this.carModel
-			.updateMany({ carStatus: CarStatus.ACTIVE }, [
-				{ $set: { carRank: { $add: [{ $multiply: [counter('carLikes'), 2] }, counter('carViews')] } } },
-			])
+			.updateMany(
+				{ carStatus: CarStatus.ACTIVE },
+				[{ $set: { carRank: { $add: [{ $multiply: [counter('carLikes'), 2] }, counter('carViews')] } } }],
+				NO_TIMESTAMPS,
+			)
 			.exec();
 	}
 
 	/** memberRank = cars * 5 + articles * 3 + likes * 2 + views (only active dealers) */
 	public async batchTopAgents(): Promise<void> {
 		await this.memberModel
-			.updateMany({ memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE }, [
-				{
-					$set: {
-						memberRank: {
-							$add: [
-								{ $multiply: [counter('memberCars'), 5] },
-								{ $multiply: [counter('memberArticles'), 3] },
-								{ $multiply: [counter('memberLikes'), 2] },
-								counter('memberViews'),
-							],
+			.updateMany(
+				{ memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE },
+				[
+					{
+						$set: {
+							memberRank: {
+								$add: [
+									{ $multiply: [counter('memberCars'), 5] },
+									{ $multiply: [counter('memberArticles'), 3] },
+									{ $multiply: [counter('memberLikes'), 2] },
+									counter('memberViews'),
+								],
+							},
 						},
 					},
-				},
-			])
+				],
+				NO_TIMESTAMPS,
+			)
 			.exec();
 	}
 

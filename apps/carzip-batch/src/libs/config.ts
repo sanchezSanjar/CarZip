@@ -10,6 +10,9 @@ export const BATCH_TEST_DRIVE_EXPIRE = 'BATCH_TEST_DRIVE_EXPIRE';
 export const BATCH_TEST_DRIVE_REMIND = 'BATCH_TEST_DRIVE_REMIND';
 export const BATCH_TEST_DRIVE_FOLLOW_UP = 'BATCH_TEST_DRIVE_FOLLOW_UP';
 export const BATCH_UPLOAD_CLEANUP = 'BATCH_UPLOAD_CLEANUP';
+export const BATCH_STALE_LISTINGS = 'BATCH_STALE_LISTINGS';
+export const BATCH_PENDING_AGENTS = 'BATCH_PENDING_AGENTS';
+export const BATCH_RECOUNT = 'BATCH_RECOUNT';
 
 /** jobs run on Korea time, whatever timezone the server is in (cloud servers are usually UTC) */
 export const BATCH_TIMEZONE = 'Asia/Seoul';

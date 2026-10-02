@@ -68,6 +68,8 @@ export class Car {
 	@Field(() => Date, { nullable: true }) deletedAt?: Date; // only admins can see deleted cars
 	/** why an ADMIN put the car on HOLD (only the owner and admins can see a HOLD car) */
 	@Field(() => String, { nullable: true }) carHoldReason?: string;
+	/** when the dealer last confirmed the listing is current (create / edit / re-activate / confirmCarListing) */
+	@Field(() => Date, { nullable: true }) carConfirmedAt?: Date;
 	@Field(() => Date) createdAt: Date;
 	@Field(() => Date) updatedAt: Date;
 

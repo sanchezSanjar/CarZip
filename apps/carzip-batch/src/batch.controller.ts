@@ -3,8 +3,13 @@ import { Cron, Timeout } from '@nestjs/schedule';
 import { BatchService } from './batch.service';
 import { TestDriveBatchService } from './test-drive.batch';
 import { UploadBatchService } from './upload.batch';
+import { ReminderBatchService } from './reminder.batch';
+import { CounterBatchService } from './counter.batch';
 import {
+	BATCH_PENDING_AGENTS,
+	BATCH_RECOUNT,
 	BATCH_ROLLBACK,
+	BATCH_STALE_LISTINGS,
 	BATCH_TEST_DRIVE_EXPIRE,
 	BATCH_TEST_DRIVE_FOLLOW_UP,
 	BATCH_TEST_DRIVE_REMIND,
@@ -19,7 +24,7 @@ import {
  * Rankings: every night at 01:00 (Korea time), one after another (rollback :00, cars :20, agents :40),
  * so the rankings are reset before they are recalculated.
  * Test drives: every 10 minutes (expire, remind) and every hour (follow up).
- * Unused uploaded images: every night at 03:00 (Korea time).
+ * Unused uploaded images 03:00, counter check 04:00, admin reminder 09:00, stale listings 10:00 (Korea time).
  * A failing job is logged and never stops the others.
  */
 @Controller()
@@ -32,6 +37,8 @@ export class BatchController {
 		private readonly batchService: BatchService,
 		private readonly testDriveBatchService: TestDriveBatchService,
 		private readonly uploadBatchService: UploadBatchService,
+		private readonly reminderBatchService: ReminderBatchService,
+		private readonly counterBatchService: CounterBatchService,
 	) {}
 
 	@Timeout(1000)
@@ -76,6 +83,24 @@ export class BatchController {
 	@Cron('00 00 03 * * *', { name: BATCH_UPLOAD_CLEANUP, timeZone: BATCH_TIMEZONE })
 	public async uploadCleanup(): Promise<void> {
 		await this.run(BATCH_UPLOAD_CLEANUP, () => this.uploadBatchService.removeUnused());
+	}
+
+	// every night at 04:00: counters (likes, comments, views, followers, cars, articles) checked against the records
+	@Cron('00 00 04 * * *', { name: BATCH_RECOUNT, timeZone: BATCH_TIMEZONE })
+	public async recount(): Promise<void> {
+		await this.run(BATCH_RECOUNT, () => this.counterBatchService.recountAll());
+	}
+
+	// every morning at 09:00: admins are told about agent applications waiting more than 48 hours
+	@Cron('00 00 09 * * *', { name: BATCH_PENDING_AGENTS, timeZone: BATCH_TIMEZONE })
+	public async pendingAgents(): Promise<void> {
+		await this.run(BATCH_PENDING_AGENTS, () => this.reminderBatchService.remindPendingAgents());
+	}
+
+	// every morning at 10:00: dealers are asked about ACTIVE cars they have not confirmed for 30 days
+	@Cron('00 00 10 * * *', { name: BATCH_STALE_LISTINGS, timeZone: BATCH_TIMEZONE })
+	public async staleListings(): Promise<void> {
+		await this.run(BATCH_STALE_LISTINGS, () => this.reminderBatchService.remindStaleListings());
 	}
 
 	@Get()

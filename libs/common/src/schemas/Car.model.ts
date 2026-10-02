@@ -89,6 +89,10 @@ const CarSchema = new Schema(
 
 		// set only when an ADMIN put the car on HOLD: shown to the dealer, who can't re-activate it until an admin does
 		carHoldReason: { type: String },
+		// the dealer last said "this listing is current" (created, edited, re-activated or confirmed). NOT updatedAt:
+		// views, likes and the nightly ranking change updatedAt without the dealer doing anything
+		carConfirmedAt: { type: Date },
+		staleRemindedAt: { type: Date }, // batch: last "is this car still for sale?" reminder
 		soldAt: { type: Date },
 		deletedAt: { type: Date },
 	},
@@ -121,6 +125,8 @@ CarSchema.index({ carStatus: 1, carRank: -1, _id: -1 });
 CarSchema.index({ carStatus: 1, carBrand: 1, carModel: 1, carYear: -1 });
 CarSchema.index({ carStatus: 1, carMarket: 1 });
 CarSchema.index({ memberId: 1, carStatus: 1 }); // agent page / "my cars"
+// batch: ACTIVE cars the dealer has not confirmed for a while
+CarSchema.index({ carStatus: 1, carConfirmedAt: 1 });
 CarSchema.index({ carOptions: 1 }); // multikey index for feature filter
 // ---- keyword search
 CarSchema.index({ carTitle: 'text', carModel: 'text', carDesc: 'text' });

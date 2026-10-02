@@ -37,6 +37,17 @@ export class CarResolver {
 		return this.carService.updateCar(memberId, input);
 	}
 
+	// "Still for sale": the dealer confirms their ACTIVE listing is current (answer to the LISTING_CHECK reminder)
+	@Roles(MemberType.AGENT)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Car)
+	public async confirmCarListing(
+		@Args('carId') carId: string,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<Car> {
+		return this.carService.confirmCarListing(memberId, shapeIntoMongoObjectId(carId));
+	}
+
 	// Public car search: guests and members. Logged-in viewers also get meLiked on every car
 	@UseGuards(WithoutGuard)
 	@Query(() => Cars)
