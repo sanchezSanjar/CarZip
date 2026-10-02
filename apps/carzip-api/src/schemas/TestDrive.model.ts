@@ -17,6 +17,8 @@ const TestDriveSchema = new Schema(
 TestDriveSchema.index({ sellerId: 1, testDriveStatus: 1, testDriveDate: 1 });
 // buyer's list: "my requests"
 TestDriveSchema.index({ memberId: 1, createdAt: -1 });
+// a car stops being on sale (SOLD / DELETE / HOLD): find its open test drives to cancel them
+TestDriveSchema.index({ carId: 1, testDriveStatus: 1 });
 // a buyer can have only ONE open request per car
 TestDriveSchema.index(
 	{ carId: 1, memberId: 1 },

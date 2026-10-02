@@ -21,6 +21,7 @@ import { UploadService } from '../upload/upload.service';
 import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
 import { NotificationService } from '../notification/notification.service';
+import { TestDriveService } from '../test-drive/test-drive.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
@@ -34,6 +35,14 @@ import { PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
 // what a car page shows about its agent (= AgentPublic). Verification data is never selected.
 const AGENT_PUBLIC_FIELDS = PUBLIC_MEMBER_FIELDS.join(' ');
 
+/** why a buyer's test drive was cancelled, told in their notification */
+const CAR_GONE_REASONS: Record<string, string> = {
+	[CarStatus.SOLD]: 'The car has been sold.',
+	[CarStatus.DELETE]: 'The car listing was removed.',
+	[CarStatus.HOLD]: 'The dealer paused this listing.',
+};
+const SELLER_GONE_REASON = 'The dealer is no longer available on CarZip.';
+
 @Injectable()
 export class CarService {
 	private readonly logger = new Logger('CarService');
@@ -46,6 +55,7 @@ export class CarService {
 		private readonly likeService: LikeService,
 		private readonly notificationService: NotificationService,
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
+		private readonly testDriveService: TestDriveService,
 	) {}
 
 	/**
@@ -150,7 +160,10 @@ export class CarService {
 		if (newStatus === CarStatus.DELETE) {
 			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -1 } }).exec();
 		}
-		// TODO(test-drive module): SOLD / DELETE -> open test drives CANCEL (+ notify those buyers on SOLD)
+		// Car Listing flowchart: a car that leaves the market cancels its open test drives, the buyers are told why
+		if (newStatus && newStatus !== CarStatus.ACTIVE) {
+			await this.testDriveService.cancelForCar(carId, CAR_GONE_REASONS[newStatus], memberId);
+		}
 		return updated;
 	}
 
@@ -317,7 +330,7 @@ export class CarService {
 	 * ADMIN moderation of any car. memberCars counts every car that is not DELETE,
 	 * so DELETE lowers it and restoring a deleted car raises it again.
 	 */
-	public async updateCarByAdmin(input: CarUpdateByAdmin): Promise<Car> {
+	public async updateCarByAdmin(adminId: Types.ObjectId, input: CarUpdateByAdmin): Promise<Car> {
 		const carId = shapeIntoMongoObjectId(input._id);
 		const car = await this.carModel.findById(carId).lean<Car>().exec();
 		if (!car) throw new NotFoundException(Message.NO_DATA_FOUND);
@@ -358,7 +371,11 @@ export class CarService {
 			await this.memberModel.updateOne({ _id: car.memberId }, { $inc: { memberCars: isDeleted ? -1 : 1 } }).exec();
 		}
 		// TODO(notification module): tell the dealer their car was held / deleted / restored
-		// TODO(test-drive module): HOLD / DELETE -> open test drives CANCEL
+		if (input.carStatus !== CarStatus.ACTIVE) {
+			const reason =
+				input.carStatus === CarStatus.HOLD ? 'The listing was put on hold by CarZip.' : CAR_GONE_REASONS.DELETE;
+			await this.testDriveService.cancelForCar(carId, reason, adminId);
+		}
 		return updated;
 	}
 
@@ -381,8 +398,9 @@ export class CarService {
 		await Promise.all([
 			this.uploadService.removeImages(removed.carImages, UploadTarget.CAR),
 			this.viewService.removeViews(carId),
+			this.testDriveService.removeForCar(carId),
 		]);
-		// TODO(like / comment / test-drive / notification modules): remove their records of this car too
+		// TODO(like / comment / notification modules): remove their records of this car too
 		return removed;
 	}
 
@@ -391,11 +409,11 @@ export class CarService {
 	 * (Car Listing flowchart). After an unblock the agent re-activates the cars they still want to sell.
 	 * Returns how many cars were put on HOLD.
 	 */
-	public async holdAgentCars(memberId: Types.ObjectId): Promise<number> {
+	public async holdAgentCars(memberId: Types.ObjectId, adminId: Types.ObjectId): Promise<number> {
 		const result = await this.carModel
 			.updateMany({ memberId, carStatus: CarStatus.ACTIVE }, { $set: { carStatus: CarStatus.HOLD } })
 			.exec();
-		// TODO(test-drive module): open test drives of these cars -> CANCEL
+		await this.testDriveService.cancelForSeller(memberId, SELLER_GONE_REASON, adminId);
 		return result.modifiedCount;
 	}
 
@@ -403,7 +421,7 @@ export class CarService {
 	 * Admin deleted the agent: their listings (ACTIVE / HOLD) are deleted too and memberCars goes down
 	 * by the same number. SOLD cars stay as sales history. Returns how many cars were deleted.
 	 */
-	public async deleteAgentCars(memberId: Types.ObjectId): Promise<number> {
+	public async deleteAgentCars(memberId: Types.ObjectId, adminId: Types.ObjectId): Promise<number> {
 		const result = await this.carModel
 			.updateMany(
 				{ memberId, carStatus: { $in: [CarStatus.ACTIVE, CarStatus.HOLD] } },
@@ -413,7 +431,7 @@ export class CarService {
 		if (result.modifiedCount) {
 			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -result.modifiedCount } }).exec();
 		}
-		// TODO(test-drive module): open test drives of these cars -> CANCEL
+		await this.testDriveService.cancelForSeller(memberId, SELLER_GONE_REASON, adminId);
 		return result.modifiedCount;
 	}
 }

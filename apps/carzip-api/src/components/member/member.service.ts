@@ -29,6 +29,7 @@ import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
 import { CarService } from '../car/car.service';
+import { TestDriveService } from '../test-drive/test-drive.service';
 import { NotificationService } from '../notification/notification.service';
 import { LikeService } from '../like/like.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
@@ -91,6 +92,7 @@ export class MemberService {
 		private readonly likeService: LikeService,
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 		@InjectModel('Follow') private readonly followModel: Model<{ followingId: unknown; followerId: unknown }>,
+		private readonly testDriveService: TestDriveService,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -463,11 +465,15 @@ export class MemberService {
 
 		// Admin flowchart: a blocked agent's cars leave search, a deleted agent's cars are deleted
 		if (target.memberType === MemberType.AGENT) {
-			if (input.memberStatus === MemberStatus.BLOCK) await this.carService.holdAgentCars(targetId);
+			if (input.memberStatus === MemberStatus.BLOCK) await this.carService.holdAgentCars(targetId, admin._id);
 			if (input.memberStatus === MemberStatus.DELETE) {
-				const deletedCars = await this.carService.deleteAgentCars(targetId);
+				const deletedCars = await this.carService.deleteAgentCars(targetId, admin._id);
 				updated.memberCars -= deletedCars; // the response shows the counter after the cars were removed
 			}
+		}
+		// a blocked / deleted buyer's open test-drive requests are cancelled, the dealers are told
+		if (input.memberStatus === MemberStatus.BLOCK || input.memberStatus === MemberStatus.DELETE) {
+			await this.testDriveService.cancelForBuyer(targetId, 'The buyer is no longer available on CarZip.', admin._id);
 		}
 		return updated;
 	}

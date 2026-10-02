@@ -11,6 +11,7 @@ import { ViewModule } from '../view/view.module';
 import { CarModule } from '../car/car.module';
 import { NotificationModule } from '../notification/notification.module';
 import { LikeModule } from '../like/like.module';
+import { TestDriveModule } from '../test-drive/test-drive.module';
 
 @Module({
 	imports: [
@@ -25,6 +26,7 @@ import { LikeModule } from '../like/like.module';
 		CarModule,
 		NotificationModule,
 		LikeModule,
+		TestDriveModule, // a blocked / deleted member's open test-drive requests are cancelled
 	],
 	providers: [MemberResolver, MemberService],
 })

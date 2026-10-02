@@ -10,6 +10,7 @@ import { UploadModule } from '../upload/upload.module';
 import { ViewModule } from '../view/view.module';
 import { LikeModule } from '../like/like.module';
 import { NotificationModule } from '../notification/notification.module';
+import { TestDriveModule } from '../test-drive/test-drive.module';
 
 @Module({
 	imports: [
@@ -23,6 +24,7 @@ import { NotificationModule } from '../notification/notification.module';
 		ViewModule, // carViews
 		LikeModule, // carLikes
 		NotificationModule, // LIKE notification to the dealer
+		TestDriveModule, // a car leaving the market cancels its open test drives
 	],
 	providers: [CarService, CarResolver],
 	exports: [CarService], // admin moderation in MemberService

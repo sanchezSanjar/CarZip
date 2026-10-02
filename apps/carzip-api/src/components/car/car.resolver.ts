@@ -90,8 +90,11 @@ export class CarResolver {
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Mutation(() => Car)
-	public async updateCarByAdmin(@Args('input') input: CarUpdateByAdmin): Promise<Car> {
-		return this.carService.updateCarByAdmin(input);
+	public async updateCarByAdmin(
+		@Args('input') input: CarUpdateByAdmin,
+		@AuthMember('_id') adminId: Types.ObjectId,
+	): Promise<Car> {
+		return this.carService.updateCarByAdmin(adminId, input);
 	}
 
 	@Roles(MemberType.ADMIN)

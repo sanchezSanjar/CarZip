@@ -9,6 +9,7 @@ import { UploadModule } from './upload/upload.module';
 import { BoardArticleModule } from './board-article/board-article.module';
 import { CommentModule } from './comment/comment.module';
 import { FollowModule } from './follow/follow.module';
+import { TestDriveModule } from './test-drive/test-drive.module';
 
 @Module({
 	imports: [
@@ -22,6 +23,7 @@ import { FollowModule } from './follow/follow.module';
 		BoardArticleModule,
 		CommentModule,
 		FollowModule,
+		TestDriveModule,
 	],
 })
 export class ComponentsModule {}
