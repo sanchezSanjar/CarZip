@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import { MemberService } from './member.service';
 import { Member, Members } from '../../libs/dto/member/member';
 import {
+	AgentInputByAdmin,
 	AgentsInquiry,
 	ChangePasswordInput,
 	ChangePhoneInput,
@@ -117,6 +118,17 @@ export class MemberResolver {
 	@Query(() => Members)
 	public async getAllMembersByAdmin(@Args('input') input: MembersInquiry): Promise<Members> {
 		return this.memberService.getAllMembersByAdmin(input);
+	}
+
+	// Admin flowchart "Create agent directly": ACTIVE and approved; the dealer sets the password via "Forgot password"
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Member)
+	public async createAgentByAdmin(
+		@Args('input') input: AgentInputByAdmin,
+		@AuthMember() admin: AuthMemberData,
+	): Promise<Member> {
+		return this.memberService.createAgentByAdmin(admin, input);
 	}
 
 	@Roles(MemberType.ADMIN)

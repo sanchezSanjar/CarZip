@@ -21,7 +21,7 @@ import { Direction, Message } from '@app/common/enums/common.enum';
 // Korean mobile number, digits only: 010xxxxxxxx
 export const PHONE_REGEX = /^01[016789]\d{7,8}$/;
 // 사업자등록번호: 123-45-67890 (dashes optional)
-const BUSINESS_NO_REGEX = /^\d{3}-?\d{2}-?\d{5}$/;
+export const BUSINESS_NO_REGEX = /^\d{3}-?\d{2}-?\d{5}$/;
 export const NICK_REGEX = /^[a-zA-Z0-9_]+$/;
 // public contact numbers: mobile, landline (02-123-4567) or international (+82 10 ...)
 export const CONTACT_PHONE_REGEX = /^\+?[0-9\s()-]{7,20}$/;
@@ -88,6 +88,70 @@ export class MemberInput {
 	agentBusinessCard?: string;
 
 	// ---- AGENT only: PUBLIC contacts shown on listings, buyers reach the agent outside CarZip
+	@IsOptional()
+	@Matches(CONTACT_PHONE_REGEX, { message: 'Contact phone must be a phone number' })
+	@Field(() => String, { nullable: true })
+	contactPhone?: string;
+
+	@IsOptional()
+	@IsEmail()
+	@Field(() => String, { nullable: true })
+	contactEmail?: string;
+
+	@IsOptional()
+	@Length(2, 50)
+	@Field(() => String, { nullable: true })
+	contactTelegram?: string;
+
+	@IsOptional()
+	@Matches(CONTACT_PHONE_REGEX, { message: 'WhatsApp must be a phone number' })
+	@Field(() => String, { nullable: true })
+	contactWhatsapp?: string;
+
+	@IsOptional()
+	@Length(2, 50)
+	@Field(() => String, { nullable: true })
+	contactKakao?: string;
+}
+
+/**
+ * createAgentByAdmin (Admin flowchart "Create agent directly"): an ACTIVE, already approved agent.
+ * No password here: the admin never knows it. The dealer sets their own with "Forgot password" (SMS code),
+ * which also proves they own memberPhone (the SMS check of signup was skipped).
+ */
+@InputType()
+export class AgentInputByAdmin {
+	@IsNotEmpty()
+	@Length(3, 12)
+	@Matches(NICK_REGEX, { message: 'Nick can contain only letters, numbers and _' })
+	@Field(() => String)
+	memberNick: string;
+
+	@IsNotEmpty()
+	@Matches(PHONE_REGEX, { message: 'Phone must look like 01012345678' })
+	@Field(() => String)
+	memberPhone: string;
+
+	@IsOptional()
+	@Length(2, 50)
+	@Field(() => String, { nullable: true })
+	memberFullName?: string;
+
+	@IsNotEmpty()
+	@Length(2, 100)
+	@Field(() => String)
+	agentCompany: string;
+
+	@IsOptional()
+	@Matches(BUSINESS_NO_REGEX, { message: 'Business number must look like 123-45-67890' })
+	@Field(() => String, { nullable: true })
+	agentBusinessNo?: string;
+
+	@IsOptional()
+	@IsUrl()
+	@Field(() => String, { nullable: true })
+	agentBusinessCard?: string;
+
 	@IsOptional()
 	@Matches(CONTACT_PHONE_REGEX, { message: 'Contact phone must be a phone number' })
 	@Field(() => String, { nullable: true })

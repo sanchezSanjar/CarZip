@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import {
 	BadRequestException,
 	ForbiddenException,
@@ -10,6 +11,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
+	AgentInputByAdmin,
 	AgentsInquiry,
 	ChangePasswordInput,
 	ChangePhoneInput,
@@ -21,7 +23,7 @@ import { OtpPurpose } from '@app/common/enums/otp.enum';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
 import { Member, Members } from '../../libs/dto/member/member';
-import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
+import { MemberAuthType, MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { Direction, Message } from '@app/common/enums/common.enum';
 import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { lookupAuthMemberFollowed, lookupAuthMemberLiked } from '../../libs/utils/lookup';
@@ -480,6 +482,33 @@ export class MemberService {
 			await this.testDriveService.cancelForBuyer(targetId, 'The buyer is no longer available on CarZip.', admin._id);
 		}
 		return updated;
+	}
+
+	/**
+	 * Admin flowchart "Create agent directly": an ACTIVE agent, approved now, without signup and review.
+	 * The password is random and never shown to anyone: the dealer sets their own with "Forgot password"
+	 * (SMS code to memberPhone), which also proves they own that phone.
+	 */
+	public async createAgentByAdmin(admin: AuthMemberData, input: AgentInputByAdmin): Promise<Member> {
+		const data = {
+			...input,
+			memberType: MemberType.AGENT,
+			memberStatus: MemberStatus.ACTIVE,
+			memberAuthType: MemberAuthType.PHONE,
+			memberPassword: await this.authService.hashPassword(randomBytes(32).toString('hex')),
+			agentApprovedAt: new Date(),
+			agentBusinessNo: input.agentBusinessNo?.replace(/-/g, ''),
+		};
+		try {
+			const member: Member & { memberPassword?: string } = (await this.memberModel.create(data)).toObject();
+			delete member.memberPassword;
+			this.logger.log(`admin ${admin.memberNick} created agent ${member.memberNick}`);
+			return member;
+		} catch (err: any) {
+			this.throwIfDuplicate(err, Message.CREATE_FAILED);
+			this.logger.error(`createAgentByAdmin failed: ${err.message}`, err.stack);
+			throw new InternalServerErrorException(Message.CREATE_FAILED);
+		}
 	}
 
 	/** MongoDB duplicate key (code 11000) on a unique index -> readable message */
