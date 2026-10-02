@@ -9,6 +9,7 @@ import { unwrapResolverError } from '@apollo/server/errors';
 import { GraphQLError, GraphQLFormattedError } from 'graphql';
 import { ComponentsModule } from './components/components.module';
 import { DatabaseModule } from './database/database.module';
+import { SocketModule } from './socket/socket.module';
 import { Message } from './libs/enums/common.enum';
 
 const logger = new Logger('GraphQLError');
@@ -64,6 +65,7 @@ const logger = new Logger('GraphQLError');
 		}),
 		ComponentsModule,
 		DatabaseModule,
+		SocketModule, // WebSocket (real-time)
 	],
 	controllers: [AppController],
 	providers: [AppService, AppResolver],
