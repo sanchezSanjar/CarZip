@@ -404,3 +404,18 @@ export class AllCarsInquiry {
 	@Field(() => ALCSearch, { nullable: true })
 	search?: ALCSearch;
 }
+
+/** a plain page request (getFavorites, getVisited) */
+@InputType()
+export class OrdinaryInquiry {
+	@IsInt()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+}

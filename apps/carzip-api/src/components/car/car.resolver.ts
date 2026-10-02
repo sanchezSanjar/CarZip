@@ -3,7 +3,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
 import { Car, Cars, CarsPage } from '../../libs/dto/car/car';
-import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { MemberType } from '../../libs/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -45,6 +45,16 @@ export class CarResolver {
 		@AuthMember() authMember: AuthMemberData | null,
 	): Promise<Cars> {
 		return this.carService.getCars(input, authMember);
+	}
+
+	// "My favorites": the cars the logged-in member liked
+	@UseGuards(AuthGuard)
+	@Query(() => CarsPage)
+	public async getFavorites(
+		@Args('input') input: OrdinaryInquiry,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<CarsPage> {
+		return this.carService.getFavorites(memberId, input);
 	}
 
 	// "My cars" dashboard: always the logged-in agent's own cars

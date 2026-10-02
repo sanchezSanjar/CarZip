@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { CarsPage } from '../../libs/dto/car/car';
+import { OrdinaryInquiry } from '../../libs/dto/car/car.input';
+import { CarStatus } from '../../libs/enums/car.enum';
+import { LikeGroup } from '../../libs/enums/like.enum';
+import { lookupAuthMemberLiked } from '../../libs/utils/lookup';
+import { lookupAgentData } from '../../libs/utils/car-query';
 import { Like, MeLiked } from '../../libs/dto/like/like';
 import { LikeInput } from '../../libs/dto/like/like.input';
 
@@ -18,6 +24,43 @@ export class LikeService {
 	 * already created the like, the unique index refuses ours and nothing changes (0).
 	 */
 	/** "did I like this?": [{ myFavorite: true }] if the member liked the item, [] if not */
+	/**
+	 * "My favorites": the cars the member liked, newest like first. Only cars people may see
+	 * (ACTIVE, SOLD): held / deleted cars drop out of the list AND of the total.
+	 * Each car comes with its agent's public data and meLiked (always liked here).
+	 */
+	public async getFavoriteCars(memberId: Types.ObjectId, input: OrdinaryInquiry): Promise<CarsPage> {
+		const [result] = await this.likeModel
+			.aggregate<CarsPage>([
+				{ $match: { memberId, likeGroup: LikeGroup.CAR } },
+				{ $sort: { updatedAt: -1, _id: -1 } },
+				{
+					$lookup: {
+						from: 'cars',
+						localField: 'likeRefId',
+						foreignField: '_id',
+						as: 'favoriteCar',
+						pipeline: [{ $match: { carStatus: { $in: [CarStatus.ACTIVE, CarStatus.SOLD] } } }],
+					},
+				},
+				{ $unwind: '$favoriteCar' }, // a held / deleted car: no match, the row disappears
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{ $replaceRoot: { newRoot: '$favoriteCar' } },
+							lookupAuthMemberLiked(memberId),
+							...lookupAgentData,
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
+	}
+
 	public async checkLikeExistence(input: LikeInput): Promise<MeLiked[]> {
 		const { memberId, likeRefId } = input;
 		const liked = await this.likeModel.exists({ memberId, likeRefId });

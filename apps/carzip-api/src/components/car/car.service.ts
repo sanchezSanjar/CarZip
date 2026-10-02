@@ -9,7 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Error as MongooseError, Model, Types } from 'mongoose';
 import { AgentPublic, Car, Cars, CarsPage } from '../../libs/dto/car/car';
-import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry } from '../../libs/dto/car/car.input';
+import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -247,6 +247,11 @@ export class CarService {
 	 * pagination, all in MongoDB (libs/utils/car-query.ts). Each car comes with its agent's PUBLIC data.
 	 * "load more" = send nextCursor back as cursor. No match = an empty list, not an error.
 	 */
+	/** "My favorites": the cars this member liked (LikeService builds the list from the likes) */
+	public async getFavorites(memberId: Types.ObjectId, input: OrdinaryInquiry): Promise<CarsPage> {
+		return this.likeService.getFavoriteCars(memberId, input);
+	}
+
 	public async getCars(input: CarsInquiry, viewer: AuthMemberData | null): Promise<Cars> {
 		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input, viewer?._id)).exec();
 		return toPage(docs, input);
