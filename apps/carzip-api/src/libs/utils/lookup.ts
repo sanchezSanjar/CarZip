@@ -17,14 +17,14 @@ export const PUBLIC_MEMBER_FIELDS = [
 ];
 
 /**
- * Aggregation stages: attach the document's member (memberId) under `as`, PUBLIC fields only.
+ * Aggregation stages: attach the member whose id is in `localField` (default memberId) under `as`, PUBLIC fields only.
  * A plain $lookup would copy the whole member, password hash included: aggregate() ignores select: false.
  */
-export const lookupPublicMember = (as: string): PipelineStage.FacetPipelineStage[] => [
+export const lookupPublicMember = (as: string, localField = 'memberId'): PipelineStage.FacetPipelineStage[] => [
 	{
 		$lookup: {
 			from: 'members',
-			localField: 'memberId',
+			localField,
 			foreignField: '_id',
 			as,
 			pipeline: [{ $project: Object.fromEntries(PUBLIC_MEMBER_FIELDS.map((field) => [field, 1])) }],

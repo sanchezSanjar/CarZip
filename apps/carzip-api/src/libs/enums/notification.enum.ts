@@ -3,6 +3,7 @@ import { registerEnumType } from '@nestjs/graphql';
 export enum NotificationType {
 	LIKE = 'LIKE',
 	COMMENT = 'COMMENT',
+	FOLLOW = 'FOLLOW', // -> agent: someone started following them
 	TEST_DRIVE = 'TEST_DRIVE',
 	AGENT_APPLICATION = 'AGENT_APPLICATION', // -> admins: new agent is waiting for review
 	AGENT_APPROVED = 'AGENT_APPROVED',

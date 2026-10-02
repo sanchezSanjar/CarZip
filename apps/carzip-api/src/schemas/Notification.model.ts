@@ -24,5 +24,14 @@ NotificationSchema.index(
 	{ notificationType: 1, authorId: 1, receiverId: 1, carId: 1, articleId: 1 },
 	{ unique: true, partialFilterExpression: { notificationType: NotificationType.LIKE } },
 );
+// one FOLLOW notification per follower per agent: follow -> unfollow -> follow does not notify again
+NotificationSchema.index(
+	{ notificationType: 1, authorId: 1, receiverId: 1 },
+	{
+		unique: true,
+		partialFilterExpression: { notificationType: NotificationType.FOLLOW },
+		name: 'unique_follow_notification',
+	},
+);
 
 export default NotificationSchema;

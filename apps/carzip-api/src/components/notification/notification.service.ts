@@ -28,7 +28,7 @@ export class NotificationService {
 	/**
 	 * Like notify(), but only the first time: the same author, receiver, type and item never notify twice.
 	 * For likes: like -> un-like -> like (or a tap-happy user) must not flood the receiver.
-	 * Only for notification types covered by the unique index in Notification.model.ts (LIKE).
+	 * Only for notification types covered by a unique index in Notification.model.ts (LIKE, FOLLOW).
 	 */
 	public async notifyOnce(input: NotificationInput): Promise<void> {
 		// no "check, then insert": two parallel taps would both pass the check. The unique index on
