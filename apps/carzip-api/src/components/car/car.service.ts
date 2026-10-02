@@ -247,8 +247,8 @@ export class CarService {
 	 * pagination, all in MongoDB (libs/utils/car-query.ts). Each car comes with its agent's PUBLIC data.
 	 * "load more" = send nextCursor back as cursor. No match = an empty list, not an error.
 	 */
-	public async getCars(input: CarsInquiry): Promise<Cars> {
-		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input)).exec();
+	public async getCars(input: CarsInquiry, viewer: AuthMemberData | null): Promise<Cars> {
+		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input, viewer?._id)).exec();
 		return toPage(docs, input);
 	}
 

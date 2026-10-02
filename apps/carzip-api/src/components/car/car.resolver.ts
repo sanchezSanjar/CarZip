@@ -37,10 +37,14 @@ export class CarResolver {
 		return this.carService.updateCar(memberId, input);
 	}
 
-	// Public car search: guests and members (like / "did I like it" comes with the like commits)
+	// Public car search: guests and members. Logged-in viewers also get meLiked on every car
+	@UseGuards(WithoutGuard)
 	@Query(() => Cars)
-	public async getCars(@Args('input') input: CarsInquiry): Promise<Cars> {
-		return this.carService.getCars(input);
+	public async getCars(
+		@Args('input') input: CarsInquiry,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<Cars> {
+		return this.carService.getCars(input, authMember);
 	}
 
 	// "My cars" dashboard: always the logged-in agent's own cars

@@ -3,7 +3,7 @@ import { PipelineStage, Types } from 'mongoose';
 import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
 import { Direction } from '../enums/common.enum';
 import { CarsInquiry, NumberRange } from '../dto/car/car.input';
-import { lookupPublicMember } from './lookup';
+import { lookupAuthMemberLiked, lookupPublicMember } from './lookup';
 
 // s / d: the sort the cursor was made for. A cursor only makes sense for that same sort:
 // "after price 21,000,000" means nothing when the list is sorted by newest.
@@ -51,7 +51,8 @@ function range(r?: NumberRange) {
 export const lookupAgentData = lookupPublicMember('agentData');
 
 /** Builds the full aggregation for getCars. Service calls: model.aggregate(pipeline), then toPage(). */
-export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
+/** viewerId: the logged-in member (fills meLiked for each car), undefined for guests */
+export function buildCarsPipeline(input: CarsInquiry, viewerId?: Types.ObjectId): PipelineStage[] {
 	const sortField = input.sort ?? CarSort.CREATED_AT;
 	const dir = input.direction ?? Direction.DESC;
 	const s = input.search ?? {};
@@ -96,6 +97,7 @@ export function buildCarsPipeline(input: CarsInquiry): PipelineStage[] {
 		{ $match: match },
 		{ $sort: { [sortField]: dir, _id: dir } },
 		{ $limit: input.limit + 1 }, // +1 tells us whether a next page exists
+		...(viewerId ? [lookupAuthMemberLiked(viewerId)] : []), // "did I like it?" per car, one query
 		...lookupAgentData,
 	];
 }

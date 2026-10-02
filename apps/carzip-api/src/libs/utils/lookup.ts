@@ -1,4 +1,4 @@
-import { PipelineStage } from 'mongoose';
+import { PipelineStage, Types } from 'mongoose';
 
 /**
  * What anyone may see about a member shown next to their content (car agent, article author) = AgentPublic.
@@ -32,3 +32,29 @@ export const lookupPublicMember = (as: string, localField = 'memberId'): Pipelin
 	},
 	{ $unwind: { path: `$${as}`, preserveNullAndEmptyArrays: true } },
 ];
+
+/**
+ * "did I like this?" for a whole LIST in one query: adds meLiked to every document,
+ * [{ memberId, likeRefId, myFavorite: true }] if the viewer liked it, [] if not.
+ * targetRefId: the field holding the liked item's id (default the document's own _id).
+ */
+export const lookupAuthMemberLiked = (
+	memberId: Types.ObjectId,
+	targetRefId = '$_id',
+): PipelineStage.FacetPipelineStage => ({
+	$lookup: {
+		from: 'likes',
+		let: { localLikeRefId: targetRefId, localMemberId: memberId, localMyFavorite: true },
+		pipeline: [
+			{
+				$match: {
+					$expr: {
+						$and: [{ $eq: ['$likeRefId', '$$localLikeRefId'] }, { $eq: ['$memberId', '$$localMemberId'] }],
+					},
+				},
+			},
+			{ $project: { _id: 0, memberId: 1, likeRefId: 1, myFavorite: '$$localMyFavorite' } },
+		],
+		as: 'meLiked',
+	},
+});
