@@ -7,6 +7,8 @@ import { FollowInquiry } from '../../libs/dto/follow/follow.input';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
+import { WithoutGuard } from '../auth/guards/without.guard';
+import { AuthMemberData } from '../../libs/types/auth';
 
 @Resolver()
 export class FollowResolver {
@@ -31,15 +33,23 @@ export class FollowResolver {
 		return this.followService.unsubscribe(memberId, shapeIntoMongoObjectId(followingId));
 	}
 
-	// public: whom a member follows ("meLiked / meFollowed" for the viewer come in the next commits)
+	// public: whom a member follows. Logged-in viewers also get meLiked per row
+	@UseGuards(WithoutGuard)
 	@Query(() => Followings)
-	public async getMemberFollowings(@Args('input') input: FollowInquiry): Promise<Followings> {
-		return this.followService.getMemberFollowings(input);
+	public async getMemberFollowings(
+		@Args('input') input: FollowInquiry,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<Followings> {
+		return this.followService.getMemberFollowings(input, authMember);
 	}
 
-	// public: who follows an agent
+	// public: who follows an agent. Logged-in viewers also get meLiked per row
+	@UseGuards(WithoutGuard)
 	@Query(() => Followers)
-	public async getMemberFollowers(@Args('input') input: FollowInquiry): Promise<Followers> {
-		return this.followService.getMemberFollowers(input);
+	public async getMemberFollowers(
+		@Args('input') input: FollowInquiry,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<Followers> {
+		return this.followService.getMemberFollowers(input, authMember);
 	}
 }

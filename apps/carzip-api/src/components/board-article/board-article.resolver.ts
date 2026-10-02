@@ -64,10 +64,14 @@ export class BoardArticleResolver {
 		return this.boardArticleService.likeTargetBoardArticle(memberId, shapeIntoMongoObjectId(articleId));
 	}
 
-	// public board (like / "did I like it" comes with the like commits)
+	// public board. Logged-in viewers also get meLiked on every article
+	@UseGuards(WithoutGuard)
 	@Query(() => BoardArticles)
-	public async getBoardArticles(@Args('input') input: BoardArticlesInquiry): Promise<BoardArticles> {
-		return this.boardArticleService.getBoardArticles(input);
+	public async getBoardArticles(
+		@Args('input') input: BoardArticlesInquiry,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<BoardArticles> {
+		return this.boardArticleService.getBoardArticles(input, authMember);
 	}
 
 	/** ADMIN */

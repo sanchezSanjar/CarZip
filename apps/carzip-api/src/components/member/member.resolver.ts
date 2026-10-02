@@ -100,10 +100,14 @@ export class MemberResolver {
 		return this.memberService.likeTargetMember(memberId, shapeIntoMongoObjectId(targetId));
 	}
 
-	// Public: the dealer directory
+	// Public: the dealer directory. Logged-in viewers also get meLiked on every agent
+	@UseGuards(WithoutGuard)
 	@Query(() => Members)
-	public async getAgents(@Args('input') input: AgentsInquiry): Promise<Members> {
-		return this.memberService.getAgents(input);
+	public async getAgents(
+		@Args('input') input: AgentsInquiry,
+		@AuthMember() authMember: AuthMemberData | null,
+	): Promise<Members> {
+		return this.memberService.getAgents(input, authMember);
 	}
 
 	/** ADMIN */

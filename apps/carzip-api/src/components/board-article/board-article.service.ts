@@ -24,7 +24,7 @@ import { UploadTarget } from '../../libs/enums/upload.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
-import { lookupPublicMember, PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
+import { lookupAuthMemberLiked, lookupPublicMember, PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
 import { ViewService } from '../view/view.service';
 import { UploadService } from '../upload/upload.service';
 import { LikeService } from '../like/like.service';
@@ -185,7 +185,7 @@ export class BoardArticleService {
 	}
 
 	/** the public board: ACTIVE articles, newest first by default, with each author's public data */
-	public async getBoardArticles(input: BoardArticlesInquiry): Promise<BoardArticles> {
+	public async getBoardArticles(input: BoardArticlesInquiry, viewer: AuthMemberData | null): Promise<BoardArticles> {
 		const { articleCategory, text, memberId } = input.search ?? {};
 		const match: Record<string, unknown> = { articleStatus: BoardArticleStatus.ACTIVE };
 		if (articleCategory) match.articleCategory = articleCategory;
@@ -204,6 +204,7 @@ export class BoardArticleService {
 						list: [
 							{ $skip: (input.page - 1) * input.limit },
 							{ $limit: input.limit },
+							...(viewer?._id ? [lookupAuthMemberLiked(viewer._id)] : []), // "did I like it?" per row, one query
 							...lookupPublicMember('memberData'),
 						],
 						metaCounter: [{ $count: 'total' }],
