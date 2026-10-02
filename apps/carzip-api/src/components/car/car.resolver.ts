@@ -2,7 +2,9 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
-import { Car, Cars, CarsPage } from '../../libs/dto/car/car';
+import { Car, CarCatalogBrand, Cars, CarsPage } from '../../libs/dto/car/car';
+import { CAR_MODELS } from '@app/common/config/car-catalog';
+import { CarBrand } from '@app/common/enums/car.enum';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { MemberType } from '@app/common/enums/member.enum';
@@ -120,6 +122,13 @@ export class CarResolver {
 	@Mutation(() => Car)
 	public async likeTargetCar(@Args('carId') carId: string, @AuthMember('_id') memberId: Types.ObjectId): Promise<Car> {
 		return this.carService.likeTargetCar(memberId, shapeIntoMongoObjectId(carId));
+	}
+
+	// Public: brand -> models for the "Add car" form and the model filter (createCar accepts only these models;
+	// brand OTHER takes a free-text model). Static data, no database.
+	@Query(() => [CarCatalogBrand])
+	public getCarCatalog(): CarCatalogBrand[] {
+		return Object.values(CarBrand).map((brand) => ({ brand, models: CAR_MODELS[brand] }));
 	}
 
 	// Public car detail: guests read it, logged-in viewers also count a view
