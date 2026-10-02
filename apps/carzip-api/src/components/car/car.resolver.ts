@@ -57,6 +57,16 @@ export class CarResolver {
 		return this.carService.getFavorites(memberId, input);
 	}
 
+	// "Recently viewed": the cars the logged-in member opened, the latest first
+	@UseGuards(AuthGuard)
+	@Query(() => CarsPage)
+	public async getVisited(
+		@Args('input') input: OrdinaryInquiry,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<CarsPage> {
+		return this.carService.getVisited(memberId, input);
+	}
+
 	// "My cars" dashboard: always the logged-in agent's own cars
 	@Roles(MemberType.AGENT)
 	@UseGuards(RolesGuard)

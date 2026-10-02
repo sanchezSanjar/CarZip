@@ -252,6 +252,11 @@ export class CarService {
 		return this.likeService.getFavoriteCars(memberId, input);
 	}
 
+	/** "Recently viewed": the cars this member opened (ViewService builds the list from the views) */
+	public async getVisited(memberId: Types.ObjectId, input: OrdinaryInquiry): Promise<CarsPage> {
+		return this.viewService.getVisitedCars(memberId, input);
+	}
+
 	public async getCars(input: CarsInquiry, viewer: AuthMemberData | null): Promise<Cars> {
 		const docs = await this.carModel.aggregate<Car>(buildCarsPipeline(input, viewer?._id)).exec();
 		return toPage(docs, input);

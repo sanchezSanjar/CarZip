@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { PipelineStage, Types } from 'mongoose';
 import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
 import { Direction } from '../enums/common.enum';
-import { CarsInquiry, NumberRange } from '../dto/car/car.input';
+import { CarsInquiry, NumberRange, OrdinaryInquiry } from '../dto/car/car.input';
 import { lookupAuthMemberLiked, lookupPublicMember } from './lookup';
 
 // s / d: the sort the cursor was made for. A cursor only makes sense for that same sort:
@@ -49,6 +49,36 @@ function range(r?: NumberRange) {
 
 /** the car's agent as agentData, PUBLIC fields only (see libs/utils/lookup.ts) */
 export const lookupAgentData = lookupPublicMember('agentData');
+
+/**
+ * "My favorites" / "Recently viewed": the member's rows (likes, views) that point at cars -> one page of those cars.
+ * Run it after $match + $sort on the rows. Only cars people may see (ACTIVE, SOLD) are kept:
+ * held / deleted cars drop out of the list AND of the total. Each car gets its agent's public data and meLiked.
+ */
+export const refsToCarsPage = (refField: string, memberId: Types.ObjectId, input: OrdinaryInquiry): PipelineStage[] => [
+	{
+		$lookup: {
+			from: 'cars',
+			localField: refField,
+			foreignField: '_id',
+			as: 'refCar',
+			pipeline: [{ $match: { carStatus: { $in: [CarStatus.ACTIVE, CarStatus.SOLD] } } }],
+		},
+	},
+	{ $unwind: '$refCar' }, // a held / deleted car: no match, the row disappears
+	{
+		$facet: {
+			list: [
+				{ $skip: (input.page - 1) * input.limit },
+				{ $limit: input.limit },
+				{ $replaceRoot: { newRoot: '$refCar' } },
+				lookupAuthMemberLiked(memberId),
+				...lookupAgentData,
+			],
+			metaCounter: [{ $count: 'total' }],
+		},
+	},
+];
 
 /** Builds the full aggregation for getCars. Service calls: model.aggregate(pipeline), then toPage(). */
 /** viewerId: the logged-in member (fills meLiked for each car), undefined for guests */

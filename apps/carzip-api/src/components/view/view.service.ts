@@ -3,6 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { View } from '../../libs/dto/view/view';
 import { ViewInput } from '../../libs/dto/view/view.input';
+import { CarsPage } from '../../libs/dto/car/car';
+import { OrdinaryInquiry } from '../../libs/dto/car/car.input';
+import { ViewGroup } from '../../libs/enums/view.enum';
+import { refsToCarsPage } from '../../libs/utils/car-query';
 
 @Injectable()
 export class ViewService {
@@ -22,6 +26,22 @@ export class ViewService {
 			{ upsert: true },
 		);
 		return result.upsertedCount === 1;
+	}
+
+	/**
+	 * "Recently viewed": the cars the member opened, the latest visit first.
+	 * recordView's upsert also refreshes updatedAt (Mongoose timestamps) on every later visit,
+	 * so a car viewed again moves back to the top.
+	 */
+	public async getVisitedCars(memberId: Types.ObjectId, input: OrdinaryInquiry): Promise<CarsPage> {
+		const [result] = await this.viewModel
+			.aggregate<CarsPage>([
+				{ $match: { memberId, viewGroup: ViewGroup.CAR } },
+				{ $sort: { updatedAt: -1, _id: -1 } },
+				...refsToCarsPage('viewRefId', memberId, input),
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
 	}
 
 	/** the item itself is gone for good (car / article removed permanently): its view records go too */
