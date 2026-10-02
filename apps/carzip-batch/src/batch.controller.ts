@@ -2,6 +2,7 @@ import { Controller, Get, Logger } from '@nestjs/common';
 import { Cron, Timeout } from '@nestjs/schedule';
 import { BatchService } from './batch.service';
 import { TestDriveBatchService } from './test-drive.batch';
+import { UploadBatchService } from './upload.batch';
 import {
 	BATCH_ROLLBACK,
 	BATCH_TEST_DRIVE_EXPIRE,
@@ -10,6 +11,7 @@ import {
 	BATCH_TIMEZONE,
 	BATCH_TOP_AGENTS,
 	BATCH_TOP_CARS,
+	BATCH_UPLOAD_CLEANUP,
 } from './libs/config';
 
 /**
@@ -17,6 +19,7 @@ import {
  * Rankings: every night at 01:00 (Korea time), one after another (rollback :00, cars :20, agents :40),
  * so the rankings are reset before they are recalculated.
  * Test drives: every 10 minutes (expire, remind) and every hour (follow up).
+ * Unused uploaded images: every night at 03:00 (Korea time).
  * A failing job is logged and never stops the others.
  */
 @Controller()
@@ -28,6 +31,7 @@ export class BatchController {
 	constructor(
 		private readonly batchService: BatchService,
 		private readonly testDriveBatchService: TestDriveBatchService,
+		private readonly uploadBatchService: UploadBatchService,
 	) {}
 
 	@Timeout(1000)
@@ -66,6 +70,12 @@ export class BatchController {
 	@Cron('00 30 * * * *', { name: BATCH_TEST_DRIVE_FOLLOW_UP, timeZone: BATCH_TIMEZONE })
 	public async testDriveFollowUp(): Promise<void> {
 		await this.run(BATCH_TEST_DRIVE_FOLLOW_UP, () => this.testDriveBatchService.followUpPast());
+	}
+
+	// every night at 03:00: uploaded images no car / profile / article uses for a day -> deleted
+	@Cron('00 00 03 * * *', { name: BATCH_UPLOAD_CLEANUP, timeZone: BATCH_TIMEZONE })
+	public async uploadCleanup(): Promise<void> {
+		await this.run(BATCH_UPLOAD_CLEANUP, () => this.uploadBatchService.removeUnused());
 	}
 
 	@Get()

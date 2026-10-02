@@ -28,6 +28,11 @@ export class LikeService {
 		return result ?? { list: [], metaCounter: [] };
 	}
 
+	/** the item is removed for good: its likes go with it. Returns how many were removed */
+	public async removeLikes(likeRefId: Types.ObjectId): Promise<number> {
+		return (await this.likeModel.deleteMany({ likeRefId }).exec()).deletedCount;
+	}
+
 	/** "did I like this?": [{ myFavorite: true }] if the member liked the item, [] if not */
 	public async checkLikeExistence(input: LikeInput): Promise<MeLiked[]> {
 		const { memberId, likeRefId } = input;

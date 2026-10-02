@@ -8,6 +8,7 @@ export enum NotificationType {
 	AGENT_APPLICATION = 'AGENT_APPLICATION', // -> admins: new agent is waiting for review
 	AGENT_APPROVED = 'AGENT_APPROVED',
 	AGENT_REJECTED = 'AGENT_REJECTED',
+	CAR_MODERATED = 'CAR_MODERATED', // -> dealer: an admin held / deleted / restored their car
 }
 registerEnumType(NotificationType, { name: 'NotificationType' });
 

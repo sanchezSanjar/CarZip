@@ -11,6 +11,7 @@ import { ViewModule } from '../view/view.module';
 import { LikeModule } from '../like/like.module';
 import { NotificationModule } from '../notification/notification.module';
 import { TestDriveModule } from '../test-drive/test-drive.module';
+import { CommentModule } from '../comment/comment.module';
 
 @Module({
 	imports: [
@@ -25,6 +26,7 @@ import { TestDriveModule } from '../test-drive/test-drive.module';
 		LikeModule, // carLikes
 		NotificationModule, // LIKE notification to the dealer
 		TestDriveModule, // a car leaving the market cancels its open test drives
+		CommentModule, // a car removed for good takes its comments with it
 	],
 	providers: [CarService, CarResolver],
 	exports: [CarService], // admin moderation in MemberService

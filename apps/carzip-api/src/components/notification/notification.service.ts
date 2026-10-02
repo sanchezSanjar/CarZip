@@ -41,6 +41,11 @@ export class NotificationService {
 		}
 	}
 
+	/** the car / article is removed for good: notifications pointing at it would lead nowhere */
+	public async removeFor(target: { carId: Types.ObjectId } | { articleId: Types.ObjectId }): Promise<number> {
+		return (await this.notificationModel.deleteMany(target).exec()).deletedCount;
+	}
+
 	/** one notification per ACTIVE admin, e.g. "a new agent is waiting for review" */
 	public async notifyAdmins(input: Omit<NotificationInput, 'receiverId'>): Promise<void> {
 		try {

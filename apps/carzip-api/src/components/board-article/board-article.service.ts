@@ -29,6 +29,7 @@ import { ViewService } from '../view/view.service';
 import { UploadService } from '../upload/upload.service';
 import { LikeService } from '../like/like.service';
 import { NotificationService } from '../notification/notification.service';
+import { CommentService } from '../comment/comment.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 
@@ -49,6 +50,7 @@ export class BoardArticleService {
 		private readonly likeService: LikeService,
 		private readonly notificationService: NotificationService,
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
+		private readonly commentService: CommentService,
 	) {}
 
 	public async createBoardArticle(memberId: Types.ObjectId, input: BoardArticleInput): Promise<BoardArticle> {
@@ -273,7 +275,8 @@ export class BoardArticleService {
 
 	/**
 	 * Remove an article FOR GOOD. Step 2 after a delete: only an already-deleted article can be removed,
-	 * so nothing disappears by one wrong click. Its image file and view records go with it.
+	 * so nothing disappears by one wrong click. Everything that points at it goes with it:
+	 * image file, views, likes, comments and notifications.
 	 */
 	public async removeBoardArticleByAdmin(articleId: Types.ObjectId): Promise<BoardArticle> {
 		const removed = await this.boardArticleModel
@@ -290,8 +293,10 @@ export class BoardArticleService {
 		await Promise.all([
 			removed.articleImage ? this.uploadService.removeImages([removed.articleImage], UploadTarget.ARTICLE) : 0,
 			this.viewService.removeViews(articleId),
+			this.likeService.removeLikes(articleId),
+			this.commentService.removeComments(articleId),
+			this.notificationService.removeFor({ articleId }),
 		]);
-		// TODO(like / comment modules): remove their records of this article too
 		return removed;
 	}
 

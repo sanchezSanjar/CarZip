@@ -126,6 +126,11 @@ export class CommentService {
 		return result ?? { list: [], metaCounter: [] };
 	}
 
+	/** the car / article is removed for good: every comment on it goes with it. Returns how many were removed */
+	public async removeComments(commentRefId: Types.ObjectId): Promise<number> {
+		return (await this.commentModel.deleteMany({ commentRefId }).exec()).deletedCount;
+	}
+
 	/** ADMIN */
 
 	/**

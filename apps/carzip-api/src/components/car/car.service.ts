@@ -22,6 +22,7 @@ import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
 import { NotificationService } from '../notification/notification.service';
 import { TestDriveService } from '../test-drive/test-drive.service';
+import { CommentService } from '../comment/comment.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
@@ -43,6 +44,13 @@ const CAR_GONE_REASONS: Record<string, string> = {
 };
 const SELLER_GONE_REASON = 'The dealer is no longer available on CarZip.';
 
+/** what the dealer is told when an admin changes their car */
+const MODERATION_TITLES: Record<string, (title: string) => string> = {
+	[CarStatus.HOLD]: (title) => `An admin put your car "${title}" on hold`,
+	[CarStatus.DELETE]: (title) => `An admin deleted your car "${title}"`,
+	[CarStatus.ACTIVE]: (title) => `Your car "${title}" is listed again`,
+};
+
 @Injectable()
 export class CarService {
 	private readonly logger = new Logger('CarService');
@@ -56,6 +64,7 @@ export class CarService {
 		private readonly notificationService: NotificationService,
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 		private readonly testDriveService: TestDriveService,
+		private readonly commentService: CommentService,
 	) {}
 
 	/**
@@ -370,7 +379,16 @@ export class CarService {
 		if (wasDeleted !== isDeleted) {
 			await this.memberModel.updateOne({ _id: car.memberId }, { $inc: { memberCars: isDeleted ? -1 : 1 } }).exec();
 		}
-		// TODO(notification module): tell the dealer their car was held / deleted / restored
+		// Admin flowchart: the dealer learns what happened to their listing and why
+		await this.notificationService.notify({
+			notificationType: NotificationType.CAR_MODERATED,
+			notificationGroup: NotificationGroup.CAR,
+			notificationTitle: MODERATION_TITLES[input.carStatus](car.carTitle),
+			notificationDesc: input.carStatus === CarStatus.HOLD ? input.carHoldReason : undefined,
+			authorId: adminId,
+			receiverId: new Types.ObjectId(String(car.memberId)),
+			carId,
+		});
 		if (input.carStatus !== CarStatus.ACTIVE) {
 			const reason =
 				input.carStatus === CarStatus.HOLD ? 'The listing was put on hold by CarZip.' : CAR_GONE_REASONS.DELETE;
@@ -382,7 +400,8 @@ export class CarService {
 	/**
 	 * ADMIN: remove a car FOR GOOD (spam, illegal listing). Step 2 after updateCarByAdmin DELETE:
 	 * only an already-deleted car can be removed, so nothing disappears by one wrong click.
-	 * memberCars already went down at the delete. Its photos and view records are removed with it.
+	 * memberCars already went down at the delete. Everything that points at it goes with it:
+	 * photos, views, likes, comments, test drives and notifications.
 	 */
 	public async removeCarByAdmin(carId: Types.ObjectId): Promise<Car> {
 		const removed = await this.carModel
@@ -399,8 +418,10 @@ export class CarService {
 			this.uploadService.removeImages(removed.carImages, UploadTarget.CAR),
 			this.viewService.removeViews(carId),
 			this.testDriveService.removeForCar(carId),
+			this.likeService.removeLikes(carId),
+			this.commentService.removeComments(carId),
+			this.notificationService.removeFor({ carId }),
 		]);
-		// TODO(like / comment / notification modules): remove their records of this car too
 		return removed;
 	}
 

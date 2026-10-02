@@ -18,6 +18,17 @@ const NotificationSchema = new Schema(
 );
 
 NotificationSchema.index({ receiverId: 1, notificationStatus: 1, createdAt: -1 });
+// MongoDB deletes old notifications by itself (TTL, checked about once a minute):
+// a READ one 90 days after it was read (updatedAt), any one a year after it was created
+NotificationSchema.index(
+	{ updatedAt: 1 },
+	{
+		expireAfterSeconds: 90 * 24 * 60 * 60,
+		partialFilterExpression: { notificationStatus: NotificationStatus.READ },
+		name: 'ttl_read_notifications',
+	},
+);
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60, name: 'ttl_all_notifications' });
 // one LIKE notification per liker per item, even with parallel requests (NotificationService.notifyOnce).
 // Member likes have no carId / articleId: missing fields count as null, so they are unique per author + receiver.
 NotificationSchema.index(

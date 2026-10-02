@@ -10,6 +10,7 @@ import { ViewModule } from '../view/view.module';
 import { UploadModule } from '../upload/upload.module';
 import { LikeModule } from '../like/like.module';
 import { NotificationModule } from '../notification/notification.module';
+import { CommentModule } from '../comment/comment.module';
 
 @Module({
 	imports: [
@@ -23,6 +24,7 @@ import { NotificationModule } from '../notification/notification.module';
 		UploadModule, // "is this image one of our uploads?"
 		LikeModule, // articleLikes
 		NotificationModule, // LIKE notification to the author
+		CommentModule, // an article removed for good takes its comments with it
 	],
 	providers: [BoardArticleResolver, BoardArticleService],
 	exports: [BoardArticleService],
