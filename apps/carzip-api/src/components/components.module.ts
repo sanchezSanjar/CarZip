@@ -10,6 +10,7 @@ import { BoardArticleModule } from './board-article/board-article.module';
 import { CommentModule } from './comment/comment.module';
 import { FollowModule } from './follow/follow.module';
 import { TestDriveModule } from './test-drive/test-drive.module';
+import { BlockModule } from './block/block.module';
 
 @Module({
 	imports: [
@@ -24,6 +25,7 @@ import { TestDriveModule } from './test-drive/test-drive.module';
 		CommentModule,
 		FollowModule,
 		TestDriveModule,
+		BlockModule,
 	],
 })
 export class ComponentsModule {}

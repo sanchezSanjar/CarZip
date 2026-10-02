@@ -37,6 +37,7 @@ export class CounterBatchService {
 		@InjectModel('Comment') private readonly commentModel: Model<Doc>,
 		@InjectModel('View') private readonly viewModel: Model<Doc>,
 		@InjectModel('Follow') private readonly followModel: Model<Doc>,
+		@InjectModel('Block') private readonly blockModel: Model<Doc>,
 	) {}
 
 	/** returns how many counters were wrong and fixed */
@@ -123,6 +124,8 @@ export class CounterBatchService {
 				match: {},
 				groupBy: 'followerId',
 			},
+			// how many agents blocked the member
+			{ target: this.memberModel, field: 'memberBlocks', source: this.blockModel, match: {}, groupBy: 'blockedId' },
 			// every car that is not DELETE (SOLD stays: sales history), every ACTIVE article
 			{
 				target: this.memberModel,

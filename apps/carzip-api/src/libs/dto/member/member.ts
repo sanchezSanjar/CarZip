@@ -54,6 +54,8 @@ export class Member {
 	@Field(() => [MeLiked], { nullable: true }) meLiked?: MeLiked[];
 	/** "do I follow this member?" for the logged-in viewer: one entry with myFollowing = true, or empty. null for guests. */
 	@Field(() => [MeFollowed], { nullable: true }) meFollowed?: MeFollowed[];
+	/** an AGENT viewing a profile: did I block this member? (null for everyone else) */
+	@Field(() => Boolean, { nullable: true }) meBlocked?: boolean;
 }
 
 @ObjectType()

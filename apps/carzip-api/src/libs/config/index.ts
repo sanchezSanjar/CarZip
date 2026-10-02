@@ -21,6 +21,7 @@ export const availableMemberSorts = [
 	'memberViews',
 	'memberRank',
 	'memberWarnings',
+	'memberBlocks', // how many agents blocked the member: a moderation signal
 ];
 
 /** what board article lists may be sorted by */

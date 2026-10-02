@@ -74,4 +74,8 @@ export enum Message {
 	TEST_DRIVE_DATE_PASSED = 'The test drive date has passed.',
 	TEST_DRIVE_NOT_YET = 'A test drive can be marked complete only after its date.',
 	TEST_DRIVE_CAR_NOT_ACTIVE = 'This car is no longer on sale.',
+	BLOCK_SELF_DENIED = 'You cannot block yourself.',
+	BLOCK_ADMIN_DENIED = 'Admins cannot be blocked.',
+	ALREADY_BLOCKED = 'You already blocked this member.',
+	NOT_BLOCKED = 'You have not blocked this member.',
 }

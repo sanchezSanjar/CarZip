@@ -294,6 +294,10 @@ export class MemberService {
 				likeGroup: LikeGroup.MEMBER,
 			});
 			member.meFollowed = await this.checkSubscription(viewer._id, targetId);
+			// the Block / Unblock button: only agents block (Personal Block flowchart)
+			if (viewer.memberType === MemberType.AGENT && !isSelf) {
+				member.meBlocked = !!(await this.blockModel.exists({ blockerId: viewer._id, blockedId: targetId }).exec());
+			}
 		}
 		return member;
 	}
