@@ -1,6 +1,7 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { MeLiked } from '../like/like';
+import { MeFollowed } from '../follow/follow';
 
 /**
  * A member. memberPassword and passwordChangedAt are NEVER here.
@@ -51,6 +52,8 @@ export class Member {
 	@Field(() => String, { nullable: true }) accessToken?: string;
 	/** "did I like this?" for the logged-in viewer: one entry with myFavorite = true, or empty. null for guests. */
 	@Field(() => [MeLiked], { nullable: true }) meLiked?: MeLiked[];
+	/** "do I follow this member?" for the logged-in viewer: one entry with myFollowing = true, or empty. null for guests. */
+	@Field(() => [MeFollowed], { nullable: true }) meFollowed?: MeFollowed[];
 }
 
 @ObjectType()

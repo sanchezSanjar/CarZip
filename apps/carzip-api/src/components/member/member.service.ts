@@ -29,6 +29,7 @@ import { CarService } from '../car/car.service';
 import { NotificationService } from '../notification/notification.service';
 import { LikeService } from '../like/like.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
+import { MeFollowed } from '../../libs/dto/follow/follow';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 
@@ -84,6 +85,7 @@ export class MemberService {
 		private readonly notificationService: NotificationService,
 		private readonly likeService: LikeService,
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
+		@InjectModel('Follow') private readonly followModel: Model<{ followingId: unknown; followerId: unknown }>,
 	) {}
 
 	public async signup(input: MemberInput): Promise<Member> {
@@ -284,6 +286,7 @@ export class MemberService {
 				likeRefId: targetId,
 				likeGroup: LikeGroup.MEMBER,
 			});
+			member.meFollowed = await this.checkSubscription(viewer._id, targetId);
 		}
 		return member;
 	}
@@ -322,6 +325,12 @@ export class MemberService {
 		// the liker sees the target's public profile only
 		for (const key of PRIVATE_FIELDS) delete updated[key];
 		return updated;
+	}
+
+	/** "do I follow this member?": [{ myFollowing: true }] if followerId follows followingId, [] if not */
+	private async checkSubscription(followerId: Types.ObjectId, followingId: Types.ObjectId): Promise<MeFollowed[]> {
+		const following = await this.followModel.exists({ followerId, followingId });
+		return following ? [{ followerId: String(followerId), followingId: String(followingId), myFollowing: true }] : [];
 	}
 
 	public async getAgents(input: AgentsInquiry): Promise<Members> {
