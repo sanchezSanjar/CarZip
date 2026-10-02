@@ -116,6 +116,7 @@ CarSchema.index({ carStatus: 1, carMileage: 1, _id: 1 });
 CarSchema.index({ carStatus: 1, carYear: -1, _id: -1 });
 CarSchema.index({ carStatus: 1, carLikes: -1, _id: -1 });
 CarSchema.index({ carStatus: 1, carViews: -1, _id: -1 });
+CarSchema.index({ carStatus: 1, carRank: -1, _id: -1 });
 // ---- filtering
 CarSchema.index({ carStatus: 1, carBrand: 1, carModel: 1, carYear: -1 });
 CarSchema.index({ carStatus: 1, carMarket: 1 });

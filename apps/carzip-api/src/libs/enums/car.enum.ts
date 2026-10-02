@@ -139,5 +139,6 @@ export enum CarSort {
 	YEAR = 'carYear',
 	LIKES = 'carLikes',
 	VIEWS = 'carViews',
+	RANK = 'carRank', // calculated nightly by the batch server
 }
 registerEnumType(CarSort, { name: 'CarSort' });

@@ -1,23 +1,59 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Car } from '../../carzip-api/src/libs/dto/car/car';
+import { Member } from '../../carzip-api/src/libs/dto/member/member';
+import { CarStatus } from '../../carzip-api/src/libs/enums/car.enum';
+import { MemberStatus, MemberType } from '../../carzip-api/src/libs/enums/member.enum';
 
-/** the work behind each scheduled job (filled in by the job scheduler commit) */
+/** a counter in a pipeline update. A missing field counts as 0 (otherwise $add gives null) */
+const counter = (field: string) => ({ $ifNull: [`$${field}`, 0] });
+
+/**
+ * Rankings. Each job is ONE updateMany, so the database does the work:
+ * no loading every document into memory and no thousands of parallel findByIdAndUpdate calls.
+ * The rank is computed from the counters the API already keeps up to date.
+ */
 @Injectable()
 export class BatchService {
-	private readonly logger = new Logger('BatchService');
+	constructor(
+		@InjectModel('Car') private readonly carModel: Model<Car>,
+		@InjectModel('Member') private readonly memberModel: Model<Member>,
+	) {}
 
-	/** reset the rankings before they are recalculated */
+	/** reset every rank, including cars/agents that are no longer ACTIVE (otherwise their old rank stays forever) */
 	public async batchRollback(): Promise<void> {
-		this.logger.log('batchRollback');
+		await this.carModel.updateMany({ carRank: { $ne: 0 } }, { $set: { carRank: 0 } }).exec();
+		await this.memberModel.updateMany({ memberRank: { $ne: 0 } }, { $set: { memberRank: 0 } }).exec();
 	}
 
-	/** rank the cars (carRank) */
+	/** carRank = likes * 2 + views (only cars on sale) */
 	public async batchTopCars(): Promise<void> {
-		this.logger.log('batchTopCars');
+		await this.carModel
+			.updateMany({ carStatus: CarStatus.ACTIVE }, [
+				{ $set: { carRank: { $add: [{ $multiply: [counter('carLikes'), 2] }, counter('carViews')] } } },
+			])
+			.exec();
 	}
 
-	/** rank the agents (memberRank) */
+	/** memberRank = cars * 5 + articles * 3 + likes * 2 + views (only active dealers) */
 	public async batchTopAgents(): Promise<void> {
-		this.logger.log('batchTopAgents');
+		await this.memberModel
+			.updateMany({ memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE }, [
+				{
+					$set: {
+						memberRank: {
+							$add: [
+								{ $multiply: [counter('memberCars'), 5] },
+								{ $multiply: [counter('memberArticles'), 3] },
+								{ $multiply: [counter('memberLikes'), 2] },
+								counter('memberViews'),
+							],
+						},
+					},
+				},
+			])
+			.exec();
 	}
 
 	public getHello(): string {

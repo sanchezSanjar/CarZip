@@ -1,12 +1,12 @@
 import { Controller, Get, Logger } from '@nestjs/common';
 import { Cron, Timeout } from '@nestjs/schedule';
 import { BatchService } from './batch.service';
-import { BATCH_ROLLBACK, BATCH_TOP_AGENTS, BATCH_TOP_CARS } from './libs/config';
+import { BATCH_ROLLBACK, BATCH_TIMEZONE, BATCH_TOP_AGENTS, BATCH_TOP_CARS } from './libs/config';
 
 /**
  * Scheduled jobs. Cron format: second minute hour day month weekday.
- * They run one after another inside each minute (rollback :00, cars :20, agents :40), so the rankings
- * are reset before they are recalculated. A failing job is logged and never stops the others.
+ * Every night at 01:00 (Korea time) they run one after another (rollback :00, cars :20, agents :40),
+ * so the rankings are reset before they are recalculated. A failing job is logged and never stops the others.
  */
 @Controller()
 export class BatchController {
@@ -19,17 +19,17 @@ export class BatchController {
 		this.logger.log('BATCH SERVER IS READY');
 	}
 
-	@Cron('00 * * * * *', { name: BATCH_ROLLBACK })
+	@Cron('00 00 01 * * *', { name: BATCH_ROLLBACK, timeZone: BATCH_TIMEZONE })
 	public async batchRollback(): Promise<void> {
 		await this.run(BATCH_ROLLBACK, () => this.batchService.batchRollback());
 	}
 
-	@Cron('20 * * * * *', { name: BATCH_TOP_CARS })
+	@Cron('20 00 01 * * *', { name: BATCH_TOP_CARS, timeZone: BATCH_TIMEZONE })
 	public async batchTopCars(): Promise<void> {
 		await this.run(BATCH_TOP_CARS, () => this.batchService.batchTopCars());
 	}
 
-	@Cron('40 * * * * *', { name: BATCH_TOP_AGENTS })
+	@Cron('40 00 01 * * *', { name: BATCH_TOP_AGENTS, timeZone: BATCH_TIMEZONE })
 	public async batchTopAgents(): Promise<void> {
 		await this.run(BATCH_TOP_AGENTS, () => this.batchService.batchTopAgents());
 	}
