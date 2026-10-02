@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { TotalCounter } from '../member/member';
+import { MeLiked } from '../like/like';
 import {
 	CarBrand,
 	CarColor,
@@ -72,6 +73,8 @@ export class Car {
 
 	/** joined in the same aggregation — no N+1 */
 	@Field(() => AgentPublic, { nullable: true }) agentData?: AgentPublic;
+	/** "did I like this?" for the logged-in viewer: one entry with myFavorite = true, or empty. null for guests. */
+	@Field(() => [MeLiked], { nullable: true }) meLiked?: MeLiked[];
 }
 
 @ObjectType()

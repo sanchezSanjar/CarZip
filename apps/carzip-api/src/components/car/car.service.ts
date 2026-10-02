@@ -197,7 +197,10 @@ export class CarService {
 
 		// agent contact buttons on the car page. A plain read: no profile view is counted for the agent
 		const agent = await this.memberModel.findById(car.memberId).select(AGENT_PUBLIC_FIELDS).lean<AgentPublic>().exec();
-		return { ...car, agentData: agent ?? undefined };
+		const meLiked = viewer
+			? await this.likeService.checkLikeExistence({ memberId: viewer._id, likeRefId: carId, likeGroup: LikeGroup.CAR })
+			: undefined;
+		return { ...car, agentData: agent ?? undefined, meLiked };
 	}
 
 	/**

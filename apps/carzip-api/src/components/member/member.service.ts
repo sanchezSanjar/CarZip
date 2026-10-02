@@ -278,6 +278,13 @@ export class MemberService {
 		if (!isAdmin && !isSelf) {
 			for (const key of PRIVATE_FIELDS) delete member[key];
 		}
+		if (viewer) {
+			member.meLiked = await this.likeService.checkLikeExistence({
+				memberId: viewer._id,
+				likeRefId: targetId,
+				likeGroup: LikeGroup.MEMBER,
+			});
+		}
 		return member;
 	}
 

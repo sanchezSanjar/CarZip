@@ -95,7 +95,14 @@ export class BoardArticleService {
 			.select(PUBLIC_MEMBER_FIELDS.join(' '))
 			.lean<AgentPublic>()
 			.exec();
-		return { ...article, memberData: author ?? undefined };
+		const meLiked = viewer
+			? await this.likeService.checkLikeExistence({
+					memberId: viewer._id,
+					likeRefId: articleId,
+					likeGroup: LikeGroup.ARTICLE,
+				})
+			: undefined;
+		return { ...article, memberData: author ?? undefined, meLiked };
 	}
 
 	/** AGENT: own ACTIVE articles. ADMIN: any ACTIVE article. DELETE lowers the AUTHOR's memberArticles. */

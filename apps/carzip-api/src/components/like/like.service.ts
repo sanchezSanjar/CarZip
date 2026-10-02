@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Like } from '../../libs/dto/like/like';
+import { Like, MeLiked } from '../../libs/dto/like/like';
 import { LikeInput } from '../../libs/dto/like/like.input';
 
 /**
@@ -17,6 +17,13 @@ export class LikeService {
 	 * Race-safe for double taps / two devices: removing is one atomic step, and if a parallel request
 	 * already created the like, the unique index refuses ours and nothing changes (0).
 	 */
+	/** "did I like this?": [{ myFavorite: true }] if the member liked the item, [] if not */
+	public async checkLikeExistence(input: LikeInput): Promise<MeLiked[]> {
+		const { memberId, likeRefId } = input;
+		const liked = await this.likeModel.exists({ memberId, likeRefId });
+		return liked ? [{ memberId: String(memberId), likeRefId: String(likeRefId), myFavorite: true }] : [];
+	}
+
 	public async toggleLike(input: LikeInput): Promise<1 | -1 | 0> {
 		const { memberId, likeRefId } = input;
 		if (await this.likeModel.findOneAndDelete({ memberId, likeRefId }).exec()) return -1;

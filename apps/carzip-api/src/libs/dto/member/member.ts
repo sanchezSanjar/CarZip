@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
+import { MeLiked } from '../like/like';
 
 /**
  * A member. memberPassword and passwordChangedAt are NEVER here.
@@ -48,6 +49,8 @@ export class Member {
 
 	/** JWT, only returned by signup and login. The client sends it back as "Authorization: Bearer <token>" */
 	@Field(() => String, { nullable: true }) accessToken?: string;
+	/** "did I like this?" for the logged-in viewer: one entry with myFavorite = true, or empty. null for guests. */
+	@Field(() => [MeLiked], { nullable: true }) meLiked?: MeLiked[];
 }
 
 @ObjectType()
