@@ -11,6 +11,7 @@ import { CommentModule } from './comment/comment.module';
 import { FollowModule } from './follow/follow.module';
 import { TestDriveModule } from './test-drive/test-drive.module';
 import { BlockModule } from './block/block.module';
+import { NoticeModule } from './notice/notice.module';
 
 @Module({
 	imports: [
@@ -26,6 +27,7 @@ import { BlockModule } from './block/block.module';
 		FollowModule,
 		TestDriveModule,
 		BlockModule,
+		NoticeModule,
 	],
 })
 export class ComponentsModule {}

@@ -30,6 +30,9 @@ export const availableBoardArticleSorts = ['createdAt', 'updatedAt', 'articleLik
 /** what comment lists may be sorted by */
 export const availableCommentSorts = ['createdAt', 'updatedAt'];
 
+/** what notice lists may be sorted by */
+export const availableNoticeSorts = ['createdAt', 'updatedAt'];
+
 /** what test-drive lists may be sorted by */
 export const availableTestDriveSorts = ['createdAt', 'testDriveDate'];
 

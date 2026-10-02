@@ -78,4 +78,5 @@ export enum Message {
 	BLOCK_ADMIN_DENIED = 'Admins cannot be blocked.',
 	ALREADY_BLOCKED = 'You already blocked this member.',
 	NOT_BLOCKED = 'You have not blocked this member.',
+	NOTICE_REMOVE_ONLY_DELETED = 'Only deleted notices can be removed permanently. Delete the notice first.',
 }

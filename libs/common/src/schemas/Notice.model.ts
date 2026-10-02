@@ -12,4 +12,7 @@ const NoticeSchema = new Schema(
 	{ timestamps: true, collection: 'notices' },
 );
 
+// public lists: one category, ACTIVE, newest first
+NoticeSchema.index({ noticeCategory: 1, noticeStatus: 1, createdAt: -1 });
+
 export default NoticeSchema;

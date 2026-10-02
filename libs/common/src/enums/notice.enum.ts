@@ -1,9 +1,10 @@
 import { registerEnumType } from '@nestjs/graphql';
 
+/** Admin flowchart: Notices / FAQ / Terms, written by admins, read by everyone */
 export enum NoticeCategory {
+	NOTICE = 'NOTICE', // announcements
 	FAQ = 'FAQ',
-	TERMS = 'TERMS',
-	INQUIRY = 'INQUIRY',
+	TERMS = 'TERMS', // terms of service, privacy policy
 }
 registerEnumType(NoticeCategory, { name: 'NoticeCategory' });
 
