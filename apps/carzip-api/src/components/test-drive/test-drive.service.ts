@@ -20,11 +20,16 @@ const MAX_OPEN_PER_BUYER = 10; // one buyer can't flood dealers with requests
 /** still waiting for the meeting: these block a new request and are cancelled when the car leaves the market */
 const OPEN_STATUSES = [TestDriveStatus.REQUEST, TestDriveStatus.CONFIRM];
 
-/** Test Drive flowchart: who may move a test drive from which status to which */
+/**
+ * Test Drive flowchart: who may move a test drive from which status to which.
+ * Once the date is agreed (CONFIRM), EITHER side may cancel, at any time (also after the date: a no-show).
+ * The dealer answers an unconfirmed REQUEST with REJECT, not CANCEL.
+ */
 const SELLER_MOVES: Partial<Record<TestDriveStatus, TestDriveStatus[]>> = {
 	[TestDriveStatus.CONFIRM]: [TestDriveStatus.REQUEST],
 	[TestDriveStatus.REJECT]: [TestDriveStatus.REQUEST],
 	[TestDriveStatus.COMPLETE]: [TestDriveStatus.CONFIRM],
+	[TestDriveStatus.CANCEL]: [TestDriveStatus.CONFIRM],
 };
 const BUYER_MOVES: Partial<Record<TestDriveStatus, TestDriveStatus[]>> = {
 	[TestDriveStatus.CANCEL]: [TestDriveStatus.REQUEST, TestDriveStatus.CONFIRM],
@@ -103,9 +108,10 @@ export class TestDriveService {
 	}
 
 	/**
-	 * Test Drive flowchart, after the request. The dealer: REQUEST -> CONFIRM / REJECT, CONFIRM -> COMPLETE
-	 * (after the date). The buyer: REQUEST / CONFIRM -> CANCEL (before the date). Each side only on their own
-	 * test drives. One atomic step on the current status: a confirm and a cancel at the same moment can't both win.
+	 * Test Drive flowchart, after the request. The dealer: REQUEST -> CONFIRM (before the date) / REJECT,
+	 * CONFIRM -> COMPLETE (after the date). Either side: CONFIRM -> CANCEL at any time; the buyer may also cancel
+	 * their REQUEST. Each side only on their own test drives. One atomic step on the current status:
+	 * a confirm and a cancel at the same moment can't both win.
 	 */
 	public async updateTestDrive(viewer: AuthMemberData, input: TestDriveUpdate): Promise<TestDrive> {
 		const _id = shapeIntoMongoObjectId(input._id);
@@ -123,9 +129,7 @@ export class TestDriveService {
 
 		const now = new Date();
 		const isPast = current.testDriveDate.getTime() <= now.getTime();
-		if ((next === TestDriveStatus.CONFIRM || next === TestDriveStatus.CANCEL) && isPast) {
-			throw new BadRequestException(Message.TEST_DRIVE_DATE_PASSED);
-		}
+		if (next === TestDriveStatus.CONFIRM && isPast) throw new BadRequestException(Message.TEST_DRIVE_DATE_PASSED);
 		if (next === TestDriveStatus.COMPLETE && !isPast) throw new BadRequestException(Message.TEST_DRIVE_NOT_YET);
 
 		let car: Car | null = null;
@@ -150,7 +154,10 @@ export class TestDriveService {
 			[TestDriveStatus.CONFIRM]: `Your test drive for "${title}" is confirmed`,
 			[TestDriveStatus.REJECT]: `Your test-drive request for "${title}" was declined. You may request another date.`,
 			[TestDriveStatus.COMPLETE]: `Your test drive for "${title}" is completed`,
-			[TestDriveStatus.CANCEL]: `A buyer cancelled the test drive for "${title}"`,
+			[TestDriveStatus.CANCEL]:
+				role === 'seller'
+					? `The dealer cancelled your test drive for "${title}"`
+					: `A buyer cancelled the test drive for "${title}"`,
 		};
 		await this.notificationService.notify({
 			notificationType: NotificationType.TEST_DRIVE,

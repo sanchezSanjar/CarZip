@@ -7,6 +7,9 @@ import { BatchService } from './batch.service';
 import { DatabaseModule } from './database/database.module';
 import CarSchema from '../../carzip-api/src/schemas/Car.model';
 import MemberSchema from '../../carzip-api/src/schemas/Member.model';
+import TestDriveSchema from '../../carzip-api/src/schemas/TestDrive.model';
+import NotificationSchema from '../../carzip-api/src/schemas/Notification.model';
+import { TestDriveBatchService } from './test-drive.batch';
 
 @Module({
 	imports: [
@@ -16,9 +19,11 @@ import MemberSchema from '../../carzip-api/src/schemas/Member.model';
 		MongooseModule.forFeature([
 			{ name: 'Car', schema: CarSchema },
 			{ name: 'Member', schema: MemberSchema },
+			{ name: 'TestDrive', schema: TestDriveSchema },
+			{ name: 'Notification', schema: NotificationSchema },
 		]),
 	],
 	controllers: [BatchController],
-	providers: [BatchService],
+	providers: [BatchService, TestDriveBatchService],
 })
 export class BatchModule {}
