@@ -17,7 +17,9 @@ const NotificationSchema = new Schema(
 	{ timestamps: true, collection: 'notifications' },
 );
 
+// the bell: unread first (status filter) or everything (newest first)
 NotificationSchema.index({ receiverId: 1, notificationStatus: 1, createdAt: -1 });
+NotificationSchema.index({ receiverId: 1, createdAt: -1 });
 // MongoDB deletes old notifications by itself (TTL, checked about once a minute):
 // a READ one 90 days after it was read (updatedAt), any one a year after it was created
 NotificationSchema.index(
