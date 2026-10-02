@@ -3,7 +3,9 @@ import {
 	ForbiddenException,
 	Injectable,
 	InternalServerErrorException,
+	Logger,
 	NotFoundException,
+	UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -77,6 +79,8 @@ const AGENT_ONLY_FIELDS = [
 
 @Injectable()
 export class MemberService {
+	private readonly logger = new Logger('MemberService');
+
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private readonly authService: AuthService,
@@ -130,7 +134,7 @@ export class MemberService {
 			return member;
 		} catch (err: any) {
 			this.throwIfDuplicate(err, Message.CREATE_FAILED);
-			console.log('Error, Service.signup:', err.message);
+			this.logger.error(`signup failed: ${err.message}`, err.stack);
 			throw new InternalServerErrorException(Message.CREATE_FAILED);
 		}
 	}
@@ -203,9 +207,9 @@ export class MemberService {
 			.exec();
 
 		// same message for "not found" and "wrong password": don't reveal which one was wrong
-		if (!found) throw new BadRequestException(Message.WRONG_LOGIN);
+		if (!found) throw new UnauthorizedException(Message.WRONG_LOGIN);
 		const isMatch = await this.authService.comparePassword(input.memberPassword, found.memberPassword);
-		if (!isMatch) throw new BadRequestException(Message.WRONG_LOGIN);
+		if (!isMatch) throw new UnauthorizedException(Message.WRONG_LOGIN);
 
 		// only after the password matched: tell the real owner why they can't get in. Only ACTIVE gets a token.
 		switch (found.memberStatus) {
@@ -244,7 +248,7 @@ export class MemberService {
 				.exec();
 		} catch (err: any) {
 			this.throwIfDuplicate(err, Message.UPDATE_FAILED); // e.g. the new nick is taken
-			console.log('Error, Service.updateMember:', err.message);
+			this.logger.error(`updateMember failed: ${err.message}`, err.stack);
 			throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		}
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
