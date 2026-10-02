@@ -58,3 +58,29 @@ export const lookupAuthMemberLiked = (
 		as: 'meLiked',
 	},
 });
+
+/**
+ * "do I follow this one?" for a whole LIST in one query: adds meFollowed to every document,
+ * [{ followerId, followingId, myFollowing: true }] if the viewer follows them, [] if not.
+ * followingId: the field holding the member shown in the row (default the document's own _id).
+ */
+export const lookupAuthMemberFollowed = (
+	followerId: Types.ObjectId,
+	followingId = '$_id',
+): PipelineStage.FacetPipelineStage => ({
+	$lookup: {
+		from: 'follows',
+		let: { localFollowerId: followerId, localFollowingId: followingId, localMyFollowing: true },
+		pipeline: [
+			{
+				$match: {
+					$expr: {
+						$and: [{ $eq: ['$followerId', '$$localFollowerId'] }, { $eq: ['$followingId', '$$localFollowingId'] }],
+					},
+				},
+			},
+			{ $project: { _id: 0, followerId: 1, followingId: 1, myFollowing: '$$localMyFollowing' } },
+		],
+		as: 'meFollowed',
+	},
+});

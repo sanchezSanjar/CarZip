@@ -22,7 +22,7 @@ import { Member, Members } from '../../libs/dto/member/member';
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
-import { lookupAuthMemberLiked } from '../../libs/utils/lookup';
+import { lookupAuthMemberFollowed, lookupAuthMemberLiked } from '../../libs/utils/lookup';
 import { AuthService } from '../auth/auth.service';
 import { OtpService } from '../otp/otp.service';
 import { ViewService } from '../view/view.service';
@@ -354,7 +354,8 @@ export class MemberService {
 						list: [
 							{ $skip: (input.page - 1) * input.limit },
 							{ $limit: input.limit },
-							...(viewer?._id ? [lookupAuthMemberLiked(viewer?._id)] : []), // "did I like it?" per row, one query
+							// "did I like / do I follow this agent?" per row, one query each
+							...(viewer?._id ? [lookupAuthMemberLiked(viewer._id), lookupAuthMemberFollowed(viewer._id)] : []),
 							{ $project: PUBLIC_LIST_PROJECTION },
 						],
 						metaCounter: [{ $count: 'total' }],

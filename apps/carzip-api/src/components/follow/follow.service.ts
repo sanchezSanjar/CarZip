@@ -15,7 +15,7 @@ import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
-import { lookupAuthMemberLiked, lookupPublicMember } from '../../libs/utils/lookup';
+import { lookupAuthMemberFollowed, lookupAuthMemberLiked, lookupPublicMember } from '../../libs/utils/lookup';
 import { AuthMemberData } from '../../libs/types/auth';
 import { NotificationService } from '../notification/notification.service';
 
@@ -89,8 +89,10 @@ export class FollowService {
 	public async getMemberFollowings(input: FollowInquiry, viewer: AuthMemberData | null): Promise<Followings> {
 		if (!input.search.followerId) throw new BadRequestException(Message.FOLLOW_SEARCH_REQUIRED);
 		const match = { followerId: shapeIntoMongoObjectId(input.search.followerId) };
-		// the row shows the FOLLOWED agent: "did I like this agent?"
-		const liked = viewer ? [lookupAuthMemberLiked(viewer._id, '$followingId')] : [];
+		// the row shows the FOLLOWED agent: "did I like / do I follow this agent?"
+		const liked = viewer
+			? [lookupAuthMemberLiked(viewer._id, '$followingId'), lookupAuthMemberFollowed(viewer._id, '$followingId')]
+			: [];
 		return this.page<Followings>(match, input, [...liked, ...lookupPublicMember('followingData', 'followingId')]);
 	}
 
@@ -98,8 +100,10 @@ export class FollowService {
 	public async getMemberFollowers(input: FollowInquiry, viewer: AuthMemberData | null): Promise<Followers> {
 		if (!input.search.followingId) throw new BadRequestException(Message.FOLLOW_SEARCH_REQUIRED);
 		const match = { followingId: shapeIntoMongoObjectId(input.search.followingId) };
-		// the row shows the FOLLOWER: "did I like this follower?" (not the agent whose page this is)
-		const liked = viewer ? [lookupAuthMemberLiked(viewer._id, '$followerId')] : [];
+		// the row shows the FOLLOWER: "did I like / do I follow this follower?" (not the agent whose page this is)
+		const liked = viewer
+			? [lookupAuthMemberLiked(viewer._id, '$followerId'), lookupAuthMemberFollowed(viewer._id, '$followerId')]
+			: [];
 		return this.page<Followers>(match, input, [...liked, ...lookupPublicMember('followerData', 'followerId')]);
 	}
 
