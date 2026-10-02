@@ -1,99 +1,159 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# CarZip
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+**A used-car marketplace backend where verified dealers list cars and buyers find them, like them, ask questions and book test drives.**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Built with NestJS, GraphQL (Apollo) and MongoDB as a monorepo of two applications: the **API server** and a **batch server** for scheduled jobs.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
 
-## Project setup
+**Members & authentication**
+- Three roles: **USER** (buyer), **AGENT** (verified car dealer), **ADMIN**
+- Signup and login with JWT; every request re-checks the member in the database (blocked members and tokens issued before a password change stop working immediately)
+- Phone verification by **SMS one-time code** (Solapi) for signup, forgot password and phone change; codes are hashed, attempt-limited and rate-limited
+- Dealers apply and wait for **admin approval**; admins can also create dealer accounts directly (the dealer sets their own password via "Forgot password")
 
-```bash
-$ npm install
+**Cars**
+- Dealers list cars for the **domestic market (KRW)**, **export (USD)** or both, with an export-responsibility agreement
+- Brand → model catalogue, nearly 20 filters, sorting by price, mileage, year, likes, views or rank, and **cursor pagination**
+- Image upload over REST: every image is decoded and re-encoded to WebP (with a thumbnail), and EXIF data such as GPS location is removed
+- Likes, comments, view counts, favorites and "recently viewed"
+
+**Test drives**
+- A buyer requests a date and the dealer confirms, rejects or later marks it complete; once a date is agreed, either side can cancel
+- The buyer's phone number is shown to the dealer **only after the dealer confirms**
+- Open test drives are cancelled automatically when the car is sold, paused or removed, and both sides are notified
+
+**Community & moderation**
+- Board articles (dealers and admins write), follows (members follow dealers), notifications with read/unread state
+- **Personal block:** a dealer can stop a member from liking, commenting, following or requesting test drives on their own listings
+- Admin moderation of members, cars, articles and comments; notices, FAQ and terms pages
+- **Real-time chat** over WebSocket: guests can read, logged-in members can write, with message validation and a spam limit
+
+**Batch server (scheduled jobs, Korea time)**
+
+| Job | When |
+|---|---|
+| Car and dealer rankings | daily 01:00 |
+| Unanswered test-drive requests expire; reminders before confirmed test drives; follow-up after them | every 10 min / hourly |
+| Delete uploaded images nothing uses | daily 03:00 |
+| Recount every stored counter (likes, views, followers...) and fix any drift | daily 04:00 |
+| Remind admins about dealer applications waiting over 48 hours | daily 09:00 |
+| Ask dealers whether listings untouched for 30 days are still for sale | daily 10:00 |
+
+Every job is safe to run twice: each change is conditional on the current state, so nothing is applied or announced twice.
+
+---
+
+## Tech stack
+
+| Area | Technology |
+|---|---|
+| Framework | NestJS 12 (monorepo), TypeScript 6 |
+| API | GraphQL with Apollo Server 5; REST for image upload |
+| Database | MongoDB with Mongoose 8 (aggregation pipelines, unique and TTL indexes) |
+| Auth | JWT, bcrypt, role guards |
+| Validation | class-validator / class-transformer (global ValidationPipe) |
+| Real time | WebSocket (`ws` adapter) |
+| Scheduling | @nestjs/schedule (cron) |
+| Images | sharp (WebP re-encoding, thumbnails) |
+| SMS | Solapi |
+| Code quality | ESLint 9, Prettier |
+
+---
+
+## Project structure
+
+```
+apps/
+  carzip-api/        GraphQL API, WebSocket chat, image upload
+    src/components/  one folder per feature: member, car, test-drive, comment, like, follow,
+                     block, notice, notification, board-article, otp, sms, upload, view, auth
+    src/libs/        GraphQL DTOs, guards, interceptors, query helpers
+    src/socket/      WebSocket chat gateway
+  carzip-batch/      scheduled jobs (rankings, test drives, cleanup, reminders, counter check)
+libs/
+  common/            shared by both apps (imported as @app/common):
+                     Mongoose schemas, enums, database module, shared config
 ```
 
-## Compile and run the project
+---
+
+## Getting started
+
+**Requirements:** Node.js 20 or newer, and a MongoDB database (local or MongoDB Atlas).
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/sanchezSanjar/CarZip.git
+cd CarZip
+npm install
 ```
 
-## Run tests
+Create a `.env` file in the project root:
+
+```env
+PORT_API=3007
+PORT_BATCH=3008
+
+MONGO_DEV=mongodb://localhost:27017/carzip
+MONGO_PROD=
+
+SECRET_TOKEN=a-long-random-string
+
+# optional: without them, SMS messages are only written to the log (nothing is sent)
+SOLAPI_API_KEY=
+SOLAPI_API_SECRET=
+SOLAPI_SENDER_NUMBER=
+
+# production only
+CORS_ORIGINS=https://your-domain.com
+UPLOADS_PUBLIC_URL=https://your-domain.com
+```
+
+Run in development:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev          # API server    -> http://localhost:3007/graphql
+npm run start:dev:batch    # batch server
 ```
 
-## Deployment
+Open `http://localhost:3007/graphql` in the browser to explore every query and mutation.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Build and run in production mode:
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+npm run build
+npx nest build carzip-batch
+npm run start:prod
+npm run start:prod:batch
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Other scripts: `npm run lint`, `npm run format`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Security notes
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Passwords are hashed with bcrypt; private fields (phone, business number, password hash) are never returned in public lists or aggregations
+- Search text is escaped before it is used in a regex; malformed ids return 400, not a server error
+- Counters and status changes are atomic, so parallel requests (double taps, two devices) can't double-count or both succeed
+- Uploaded files are re-encoded, so only clean images the server produced are stored and served
+- Secrets and tokens are masked in logs; chat message text is never logged
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Roadmap
 
-## Stay in touch
+- API documentation for the frontend
+- Login rate limit, security headers (helmet), `trust proxy` for deployment
+- Automated end-to-end test suite
+- Redis for chat history and live notification push
+- Object storage (S3 / R2) for images
+- Web frontend (Next.js), then a mobile app
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Author
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Sanjar** · [github.com/sanchezSanjar](https://github.com/sanchezSanjar)
