@@ -20,11 +20,9 @@ export class ViewService {
 	 */
 	public async recordView(input: ViewInput): Promise<boolean> {
 		const { memberId, viewRefId, viewGroup } = input;
-		const result = await this.viewModel.updateOne(
-			{ memberId, viewRefId },
-			{ $setOnInsert: { memberId, viewRefId, viewGroup } },
-			{ upsert: true },
-		);
+		const result = await this.viewModel
+			.updateOne({ memberId, viewRefId }, { $setOnInsert: { memberId, viewRefId, viewGroup } }, { upsert: true })
+			.exec();
 		return result.upsertedCount === 1;
 	}
 
@@ -46,6 +44,6 @@ export class ViewService {
 
 	/** the item itself is gone for good (car / article removed permanently): its view records go too */
 	public async removeViews(viewRefId: Types.ObjectId): Promise<number> {
-		return (await this.viewModel.deleteMany({ viewRefId })).deletedCount;
+		return (await this.viewModel.deleteMany({ viewRefId }).exec()).deletedCount;
 	}
 }

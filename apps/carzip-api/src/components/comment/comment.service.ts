@@ -53,7 +53,7 @@ export class CommentService {
 		const target = await this.findTarget(input.commentGroup, refId);
 
 		// flowchart: "blocks: has car owner blocked this member? yes -> Not allowed (personal block)"
-		if (await this.blockModel.exists({ blockerId: target.ownerId, blockedId: memberId })) {
+		if (await this.blockModel.exists({ blockerId: target.ownerId, blockedId: memberId }).exec()) {
 			throw new ForbiddenException(Message.COMMENT_BLOCKED);
 		}
 
@@ -143,7 +143,8 @@ export class CommentService {
 			.lean<Comment>()
 			.exec();
 		if (!removed) {
-			if (await this.commentModel.exists({ _id: commentId })) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+			if (await this.commentModel.exists({ _id: commentId }).exec())
+				throw new BadRequestException(Message.NOTHING_TO_UPDATE);
 			throw new NotFoundException(Message.NO_DATA_FOUND);
 		}
 		await this.changeCounter(removed.commentGroup, new Types.ObjectId(String(removed.commentRefId)), -1);
@@ -183,10 +184,11 @@ export class CommentService {
 
 	/** carComments / articleComments / memberComments of the target */
 	private async changeCounter(group: CommentGroup, refId: Types.ObjectId, modifier: number): Promise<void> {
-		if (group === CommentGroup.CAR) await this.carModel.updateOne({ _id: refId }, { $inc: { carComments: modifier } });
+		if (group === CommentGroup.CAR)
+			await this.carModel.updateOne({ _id: refId }, { $inc: { carComments: modifier } }).exec();
 		else if (group === CommentGroup.ARTICLE) {
-			await this.boardArticleModel.updateOne({ _id: refId }, { $inc: { articleComments: modifier } });
-		} else await this.memberModel.updateOne({ _id: refId }, { $inc: { memberComments: modifier } });
+			await this.boardArticleModel.updateOne({ _id: refId }, { $inc: { articleComments: modifier } }).exec();
+		} else await this.memberModel.updateOne({ _id: refId }, { $inc: { memberComments: modifier } }).exec();
 	}
 }
 

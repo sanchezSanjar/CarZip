@@ -58,26 +58,28 @@ export class OtpService {
 
 		let memberId: Types.ObjectId | undefined;
 		if (otpPurpose === OtpPurpose.SIGNUP) {
-			if (await this.memberModel.exists({ memberPhone: otpPhone })) throw new BadRequestException(Message.USED_PHONE);
+			if (await this.memberModel.exists({ memberPhone: otpPhone }).exec())
+				throw new BadRequestException(Message.USED_PHONE);
 		} else if (otpPurpose === OtpPurpose.CHANGE_PHONE) {
 			// the NEW number: nobody (the member included) may already use it
-			if (await this.memberModel.exists({ memberPhone: otpPhone })) throw new BadRequestException(Message.USED_PHONE);
+			if (await this.memberModel.exists({ memberPhone: otpPhone }).exec())
+				throw new BadRequestException(Message.USED_PHONE);
 			memberId = viewer!._id;
 		} else {
 			const member = await this.memberModel
 				.findOne({ memberPhone: otpPhone })
 				.select('_id memberStatus')
-				.lean<{ _id: Types.ObjectId; memberStatus: MemberStatus }>();
+				.lean<{ _id: Types.ObjectId; memberStatus: MemberStatus }>()
+				.exec();
 			// unknown or inactive number: send nothing, but answer exactly like a real send
 			if (member?.memberStatus !== MemberStatus.ACTIVE) return Message.OTP_SENT_IF_REGISTERED;
 			memberId = member._id;
 		}
 
 		// only the newest code works
-		await this.otpModel.updateMany(
-			{ otpPhone, otpPurpose, otpStatus: OtpStatus.PENDING },
-			{ otpStatus: OtpStatus.EXPIRED },
-		);
+		await this.otpModel
+			.updateMany({ otpPhone, otpPurpose, otpStatus: OtpStatus.PENDING }, { otpStatus: OtpStatus.EXPIRED })
+			.exec();
 
 		const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
 		await this.otpModel.create({
@@ -113,7 +115,8 @@ export class OtpService {
 		const otp = await this.otpModel
 			.findOneAndUpdate(filter, { $inc: { otpAttempts: 1 } }, { sort: { createdAt: -1 }, new: true })
 			.select('+otpCodeHash')
-			.lean<Otp>();
+			.lean<Otp>()
+			.exec();
 		if (!otp) throw new BadRequestException(Message.OTP_EXPIRED);
 
 		if (otp.expiresAt < new Date() || otp.otpAttempts > MAX_ATTEMPTS) {
@@ -132,15 +135,17 @@ export class OtpService {
 		const verified = { otpStatus: OtpStatus.VERIFIED, verifiedAt: new Date() };
 		// SIGNUP / CHANGE_PHONE: the phone is now proven; signup / changeMemberPhone use it next
 		if (otpPurpose !== OtpPurpose.RESET_PASSWORD) {
-			await this.otpModel.updateOne({ _id: otp._id, otpStatus: OtpStatus.PENDING }, verified);
+			await this.otpModel.updateOne({ _id: otp._id, otpStatus: OtpStatus.PENDING }, verified).exec();
 			return { message: Message.OTP_VERIFIED };
 		}
 
 		const resetToken = randomBytes(32).toString('base64url');
-		await this.otpModel.updateOne(
-			{ _id: otp._id, otpStatus: OtpStatus.PENDING },
-			{ ...verified, resetTokenHash: this.sha256(resetToken), expiresAt: new Date(Date.now() + RESET_TOKEN_TTL) },
-		);
+		await this.otpModel
+			.updateOne(
+				{ _id: otp._id, otpStatus: OtpStatus.PENDING },
+				{ ...verified, resetTokenHash: this.sha256(resetToken), expiresAt: new Date(Date.now() + RESET_TOKEN_TTL) },
+			)
+			.exec();
 		return { message: Message.OTP_VERIFIED, resetToken };
 	}
 
@@ -156,16 +161,19 @@ export class OtpService {
 				},
 				{ otpStatus: OtpStatus.USED },
 			)
-			.lean<Otp>();
+			.lean<Otp>()
+			.exec();
 		if (!otp?.memberId) throw new BadRequestException(Message.RESET_TOKEN_INVALID);
 
-		const result = await this.memberModel.updateOne(
-			{ _id: otp.memberId, memberStatus: MemberStatus.ACTIVE },
-			{
-				memberPassword: await this.authService.hashPassword(input.newPassword),
-				passwordChangedAt: new Date(), // AuthGuard now rejects every JWT issued before this moment
-			},
-		);
+		const result = await this.memberModel
+			.updateOne(
+				{ _id: otp.memberId, memberStatus: MemberStatus.ACTIVE },
+				{
+					memberPassword: await this.authService.hashPassword(input.newPassword),
+					passwordChangedAt: new Date(), // AuthGuard now rejects every JWT issued before this moment
+				},
+			)
+			.exec();
 		if (!result.matchedCount) throw new BadRequestException(Message.RESET_TOKEN_INVALID);
 		return Message.PASSWORD_RESET_DONE;
 	}
@@ -179,13 +187,15 @@ export class OtpService {
 		otpPurpose: OtpPurpose.SIGNUP | OtpPurpose.CHANGE_PHONE = OtpPurpose.SIGNUP,
 		memberId?: Types.ObjectId,
 	): Promise<void> {
-		const verified = await this.otpModel.exists({
-			otpPhone,
-			otpPurpose,
-			otpStatus: OtpStatus.VERIFIED,
-			verifiedAt: { $gte: new Date(Date.now() - SIGNUP_VERIFIED_WINDOW) },
-			...(memberId && { memberId }),
-		});
+		const verified = await this.otpModel
+			.exists({
+				otpPhone,
+				otpPurpose,
+				otpStatus: OtpStatus.VERIFIED,
+				verifiedAt: { $gte: new Date(Date.now() - SIGNUP_VERIFIED_WINDOW) },
+				...(memberId && { memberId }),
+			})
+			.exec();
 		if (!verified) throw new BadRequestException(Message.PHONE_NOT_VERIFIED);
 	}
 
@@ -194,18 +204,17 @@ export class OtpService {
 		otpPhone: string,
 		otpPurpose: OtpPurpose.SIGNUP | OtpPurpose.CHANGE_PHONE = OtpPurpose.SIGNUP,
 	): Promise<void> {
-		await this.otpModel.updateMany(
-			{ otpPhone, otpPurpose, otpStatus: OtpStatus.VERIFIED },
-			{ otpStatus: OtpStatus.USED },
-		);
+		await this.otpModel
+			.updateMany({ otpPhone, otpPurpose, otpStatus: OtpStatus.VERIFIED }, { otpStatus: OtpStatus.USED })
+			.exec();
 	}
 
 	private async checkRateLimit(otpPhone: string, otpPurpose: OtpPurpose, ip: string): Promise<void> {
 		const hourAgo = new Date(Date.now() - 60 * MINUTE);
 		const [last, phoneCount, ipCount] = await Promise.all([
-			this.otpModel.findOne({ otpPhone, otpPurpose }).sort({ createdAt: -1 }).select('createdAt').lean<Otp>(),
-			this.otpModel.countDocuments({ otpPhone, otpPurpose, createdAt: { $gte: hourAgo } }),
-			this.otpModel.countDocuments({ otpIp: ip, createdAt: { $gte: hourAgo } }),
+			this.otpModel.findOne({ otpPhone, otpPurpose }).sort({ createdAt: -1 }).select('createdAt').lean<Otp>().exec(),
+			this.otpModel.countDocuments({ otpPhone, otpPurpose, createdAt: { $gte: hourAgo } }).exec(),
+			this.otpModel.countDocuments({ otpIp: ip, createdAt: { $gte: hourAgo } }).exec(),
 		]);
 		if (phoneCount >= MAX_PER_PHONE_PER_HOUR || ipCount >= MAX_PER_IP_PER_HOUR) {
 			throw new HttpException(Message.OTP_TOO_MANY_REQUESTS, HttpStatus.TOO_MANY_REQUESTS);
@@ -216,7 +225,7 @@ export class OtpService {
 	}
 
 	private async expire(_id: Types.ObjectId): Promise<void> {
-		await this.otpModel.updateOne({ _id }, { otpStatus: OtpStatus.EXPIRED });
+		await this.otpModel.updateOne({ _id }, { otpStatus: OtpStatus.EXPIRED }).exec();
 	}
 
 	/**

@@ -45,7 +45,7 @@ export class FollowService {
 			.exec();
 		if (!target) throw new NotFoundException(Message.NO_DATA_FOUND);
 		if (target.memberType !== MemberType.AGENT) throw new BadRequestException(Message.ONLY_AGENTS_FOLLOWABLE);
-		if (await this.blockModel.exists({ blockerId: followingId, blockedId: followerId })) {
+		if (await this.blockModel.exists({ blockerId: followingId, blockedId: followerId }).exec()) {
 			throw new ForbiddenException(Message.FOLLOW_BLOCKED);
 		}
 
@@ -60,8 +60,8 @@ export class FollowService {
 		}
 
 		await Promise.all([
-			this.memberModel.updateOne({ _id: followerId }, { $inc: { memberFollowings: 1 } }),
-			this.memberModel.updateOne({ _id: followingId }, { $inc: { memberFollowers: 1 } }),
+			this.memberModel.updateOne({ _id: followerId }, { $inc: { memberFollowings: 1 } }).exec(),
+			this.memberModel.updateOne({ _id: followingId }, { $inc: { memberFollowers: 1 } }).exec(),
 		]);
 		await this.notificationService.notifyOnce({
 			notificationType: NotificationType.FOLLOW,
@@ -79,8 +79,8 @@ export class FollowService {
 		if (!removed) throw new BadRequestException(Message.NOT_FOLLOWING);
 
 		await Promise.all([
-			this.memberModel.updateOne({ _id: followerId }, { $inc: { memberFollowings: -1 } }),
-			this.memberModel.updateOne({ _id: followingId }, { $inc: { memberFollowers: -1 } }),
+			this.memberModel.updateOne({ _id: followerId }, { $inc: { memberFollowings: -1 } }).exec(),
+			this.memberModel.updateOne({ _id: followingId }, { $inc: { memberFollowers: -1 } }).exec(),
 		]);
 		return removed;
 	}

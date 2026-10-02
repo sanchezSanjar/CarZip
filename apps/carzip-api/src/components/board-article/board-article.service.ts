@@ -61,7 +61,7 @@ export class BoardArticleService {
 			this.logger.error(`createBoardArticle failed: ${err?.message ?? err}`);
 			throw new InternalServerErrorException(Message.CREATE_FAILED);
 		}
-		await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberArticles: 1 } });
+		await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberArticles: 1 } }).exec();
 		return created;
 	}
 
@@ -133,7 +133,7 @@ export class BoardArticleService {
 
 		if ($set.articleStatus === BoardArticleStatus.DELETE) {
 			// the author's counter, also when an admin deletes someone else's article
-			await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: -1 } });
+			await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: -1 } }).exec();
 		}
 		return updated;
 	}
@@ -151,7 +151,7 @@ export class BoardArticleService {
 		if (!article) throw new NotFoundException(Message.NO_DATA_FOUND);
 		const authorId = new Types.ObjectId(String(article.memberId));
 		if (authorId.equals(memberId)) throw new BadRequestException(Message.OWN_CONTENT_LIKE_DENIED);
-		if (await this.blockModel.exists({ blockerId: authorId, blockedId: memberId })) {
+		if (await this.blockModel.exists({ blockerId: authorId, blockedId: memberId }).exec()) {
 			throw new ForbiddenException(Message.LIKE_BLOCKED);
 		}
 
@@ -267,7 +267,7 @@ export class BoardArticleService {
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
 
 		const modifier = input.articleStatus === BoardArticleStatus.DELETE ? -1 : 1;
-		await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: modifier } });
+		await this.memberModel.updateOne({ _id: article.memberId }, { $inc: { memberArticles: modifier } }).exec();
 		return updated;
 	}
 
@@ -281,7 +281,7 @@ export class BoardArticleService {
 			.lean<BoardArticle>()
 			.exec();
 		if (!removed) {
-			if (await this.boardArticleModel.exists({ _id: articleId })) {
+			if (await this.boardArticleModel.exists({ _id: articleId }).exec()) {
 				throw new BadRequestException(Message.ARTICLE_REMOVE_ONLY_DELETED);
 			}
 			throw new NotFoundException(Message.NO_DATA_FOUND);

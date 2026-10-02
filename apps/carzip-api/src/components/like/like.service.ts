@@ -31,7 +31,7 @@ export class LikeService {
 	/** "did I like this?": [{ myFavorite: true }] if the member liked the item, [] if not */
 	public async checkLikeExistence(input: LikeInput): Promise<MeLiked[]> {
 		const { memberId, likeRefId } = input;
-		const liked = await this.likeModel.exists({ memberId, likeRefId });
+		const liked = await this.likeModel.exists({ memberId, likeRefId }).exec();
 		return liked ? [{ memberId: String(memberId), likeRefId: String(likeRefId), myFavorite: true }] : [];
 	}
 

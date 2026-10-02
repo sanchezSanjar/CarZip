@@ -300,9 +300,9 @@ export class MemberService {
 	 */
 	public async likeTargetMember(memberId: Types.ObjectId, targetId: Types.ObjectId): Promise<Member> {
 		if (memberId.equals(targetId)) throw new BadRequestException(Message.SELF_LIKE_DENIED);
-		const target = await this.memberModel.exists({ _id: targetId, memberStatus: MemberStatus.ACTIVE });
+		const target = await this.memberModel.exists({ _id: targetId, memberStatus: MemberStatus.ACTIVE }).exec();
 		if (!target) throw new NotFoundException(Message.NO_DATA_FOUND);
-		if (await this.blockModel.exists({ blockerId: targetId, blockedId: memberId })) {
+		if (await this.blockModel.exists({ blockerId: targetId, blockedId: memberId }).exec()) {
 			throw new ForbiddenException(Message.LIKE_BLOCKED);
 		}
 
@@ -330,7 +330,7 @@ export class MemberService {
 
 	/** "do I follow this member?": [{ myFollowing: true }] if followerId follows followingId, [] if not */
 	private async checkSubscription(followerId: Types.ObjectId, followingId: Types.ObjectId): Promise<MeFollowed[]> {
-		const following = await this.followModel.exists({ followerId, followingId });
+		const following = await this.followModel.exists({ followerId, followingId }).exec();
 		return following ? [{ followerId: String(followerId), followingId: String(followingId), myFollowing: true }] : [];
 	}
 

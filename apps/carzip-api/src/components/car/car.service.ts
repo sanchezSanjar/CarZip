@@ -77,7 +77,7 @@ export class CarService {
 			throw new InternalServerErrorException(Message.CREATE_FAILED);
 		}
 
-		await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: 1 } });
+		await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: 1 } }).exec();
 		return created;
 	}
 
@@ -148,7 +148,7 @@ export class CarService {
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
 
 		if (newStatus === CarStatus.DELETE) {
-			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -1 } });
+			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -1 } }).exec();
 		}
 		// TODO(test-drive module): SOLD / DELETE -> open test drives CANCEL (+ notify those buyers on SOLD)
 		return updated;
@@ -217,7 +217,7 @@ export class CarService {
 		if (!car) throw new NotFoundException(Message.NO_DATA_FOUND);
 		const ownerId = new Types.ObjectId(String(car.memberId));
 		if (ownerId.equals(memberId)) throw new BadRequestException(Message.OWN_CONTENT_LIKE_DENIED);
-		if (await this.blockModel.exists({ blockerId: ownerId, blockedId: memberId })) {
+		if (await this.blockModel.exists({ blockerId: ownerId, blockedId: memberId }).exec()) {
 			throw new ForbiddenException(Message.LIKE_BLOCKED);
 		}
 
@@ -355,7 +355,7 @@ export class CarService {
 		const wasDeleted = car.carStatus === CarStatus.DELETE;
 		const isDeleted = input.carStatus === CarStatus.DELETE;
 		if (wasDeleted !== isDeleted) {
-			await this.memberModel.updateOne({ _id: car.memberId }, { $inc: { memberCars: isDeleted ? -1 : 1 } });
+			await this.memberModel.updateOne({ _id: car.memberId }, { $inc: { memberCars: isDeleted ? -1 : 1 } }).exec();
 		}
 		// TODO(notification module): tell the dealer their car was held / deleted / restored
 		// TODO(test-drive module): HOLD / DELETE -> open test drives CANCEL
@@ -373,7 +373,7 @@ export class CarService {
 			.lean<Car>()
 			.exec();
 		if (!removed) {
-			const exists = await this.carModel.exists({ _id: carId });
+			const exists = await this.carModel.exists({ _id: carId }).exec();
 			if (exists) throw new BadRequestException(Message.CAR_REMOVE_ONLY_DELETED);
 			throw new NotFoundException(Message.NO_DATA_FOUND);
 		}
@@ -392,10 +392,9 @@ export class CarService {
 	 * Returns how many cars were put on HOLD.
 	 */
 	public async holdAgentCars(memberId: Types.ObjectId): Promise<number> {
-		const result = await this.carModel.updateMany(
-			{ memberId, carStatus: CarStatus.ACTIVE },
-			{ $set: { carStatus: CarStatus.HOLD } },
-		);
+		const result = await this.carModel
+			.updateMany({ memberId, carStatus: CarStatus.ACTIVE }, { $set: { carStatus: CarStatus.HOLD } })
+			.exec();
 		// TODO(test-drive module): open test drives of these cars -> CANCEL
 		return result.modifiedCount;
 	}
@@ -405,12 +404,14 @@ export class CarService {
 	 * by the same number. SOLD cars stay as sales history. Returns how many cars were deleted.
 	 */
 	public async deleteAgentCars(memberId: Types.ObjectId): Promise<number> {
-		const result = await this.carModel.updateMany(
-			{ memberId, carStatus: { $in: [CarStatus.ACTIVE, CarStatus.HOLD] } },
-			{ $set: { carStatus: CarStatus.DELETE, deletedAt: new Date() } },
-		);
+		const result = await this.carModel
+			.updateMany(
+				{ memberId, carStatus: { $in: [CarStatus.ACTIVE, CarStatus.HOLD] } },
+				{ $set: { carStatus: CarStatus.DELETE, deletedAt: new Date() } },
+			)
+			.exec();
 		if (result.modifiedCount) {
-			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -result.modifiedCount } });
+			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -result.modifiedCount } }).exec();
 		}
 		// TODO(test-drive module): open test drives of these cars -> CANCEL
 		return result.modifiedCount;
