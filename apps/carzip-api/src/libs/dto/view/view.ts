@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { ViewGroup } from '../../enums/view.enum';
+import { ViewGroup } from '@app/common/enums/view.enum';
 
 /** one member viewed one item (member profile, car, article) — at most once, see View.model.ts */
 @ObjectType()

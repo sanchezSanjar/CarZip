@@ -1,8 +1,8 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsIn, IsInt, IsMongoId, IsOptional, IsUrl, Length, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BoardArticleCategory, BoardArticleStatus } from '../../enums/board-article.enum';
-import { Direction } from '../../enums/common.enum';
+import { BoardArticleCategory, BoardArticleStatus } from '@app/common/enums/board-article.enum';
+import { Direction } from '@app/common/enums/common.enum';
 import { availableBoardArticleSorts } from '../../config';
 
 /**

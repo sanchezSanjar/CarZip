@@ -5,7 +5,7 @@ import { View } from '../../libs/dto/view/view';
 import { ViewInput } from '../../libs/dto/view/view.input';
 import { CarsPage } from '../../libs/dto/car/car';
 import { OrdinaryInquiry } from '../../libs/dto/car/car.input';
-import { ViewGroup } from '../../libs/enums/view.enum';
+import { ViewGroup } from '@app/common/enums/view.enum';
 import { refsToCarsPage } from '../../libs/utils/car-query';
 
 @Injectable()

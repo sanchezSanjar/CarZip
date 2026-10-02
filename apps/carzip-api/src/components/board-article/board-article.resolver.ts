@@ -9,7 +9,7 @@ import {
 	BoardArticlesInquiry,
 } from '../../libs/dto/board-article/board-article.input';
 import { BoardArticleUpdate, BoardArticleUpdateByAdmin } from '../../libs/dto/board-article/board-article.update';
-import { MemberType } from '../../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { Roles } from '../auth/decorators/roles.decorator';

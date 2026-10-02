@@ -2,8 +2,8 @@ import { Field, InputType, Int } from '@nestjs/graphql';
 import { Type } from 'class-transformer';
 import { IsDate, IsIn, IsInt, IsMongoId, IsOptional, Length, Max, Min, ValidateNested } from 'class-validator';
 import { availableTestDriveSorts } from '../../config';
-import { Direction } from '../../enums/common.enum';
-import { TestDriveStatus } from '../../enums/test-drive.enum';
+import { Direction } from '@app/common/enums/common.enum';
+import { TestDriveStatus } from '@app/common/enums/test-drive.enum';
 
 /** requestTestDrive input. The buyer (memberId) comes from the JWT, the seller from the car in the DB. */
 @InputType()

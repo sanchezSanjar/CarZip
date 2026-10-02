@@ -5,7 +5,7 @@ import { CarService } from './car.service';
 import { Car, Cars, CarsPage } from '../../libs/dto/car/car';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
-import { MemberType } from '../../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';

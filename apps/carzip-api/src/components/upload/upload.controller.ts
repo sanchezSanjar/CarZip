@@ -16,9 +16,9 @@ import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { AuthMemberData } from '../../libs/types/auth';
 import { UploadInput } from '../../libs/dto/upload/upload.input';
 import { UploadedImage } from '../../libs/dto/upload/upload';
-import { UploadTarget } from '../../libs/enums/upload.enum';
-import { MemberType } from '../../libs/enums/member.enum';
-import { Message } from '../../libs/enums/common.enum';
+import { UploadTarget } from '@app/common/enums/upload.enum';
+import { MemberType } from '@app/common/enums/member.enum';
+import { Message } from '@app/common/enums/common.enum';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per photo, checked while receiving (413 above it)
 const MAX_FILES = 20; // CarInput.carImages allows up to 20 photos

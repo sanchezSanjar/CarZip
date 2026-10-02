@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { LikeGroup } from '../../enums/like.enum';
+import { LikeGroup } from '@app/common/enums/like.enum';
 
 /** one member liked one car / article / member (at most once, see Like.model.ts) */
 @ObjectType()

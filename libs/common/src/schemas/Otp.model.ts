@@ -1,5 +1,5 @@
 import { Schema } from 'mongoose';
-import { OtpPurpose, OtpStatus } from '../libs/enums/otp.enum';
+import { OtpPurpose, OtpStatus } from '../enums/otp.enum';
 
 const OtpSchema = new Schema(
 	{

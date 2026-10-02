@@ -2,9 +2,9 @@ import { BadRequestException, Injectable, InternalServerErrorException, Logger }
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { StorageService } from './storage.service';
-import { UploadTarget } from '../../libs/enums/upload.enum';
+import { UploadTarget } from '@app/common/enums/upload.enum';
 import { UploadedImage } from '../../libs/dto/upload/upload';
-import { Message } from '../../libs/enums/common.enum';
+import { Message } from '@app/common/enums/common.enum';
 
 const ALLOWED_FORMATS = ['jpeg', 'png', 'webp']; // never svg (can carry scripts) or gif
 const MAX_INPUT_PIXELS = 50_000_000; // a tiny file that decodes to a gigantic image (decompression bomb) is refused

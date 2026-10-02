@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { IsIn, IsNotEmpty, Length, Matches } from 'class-validator';
-import { OtpPurpose } from '../../enums/otp.enum';
+import { OtpPurpose } from '@app/common/enums/otp.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 const PHONE_REGEX = /^01[016789]\d{7,8}$/;

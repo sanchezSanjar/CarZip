@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { NotificationInput } from '../../libs/dto/notification/notification.input';
-import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
+import { NotificationInput } from '@app/common/types/notification';
+import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 
 /**
  * Creates notifications for other modules. A notification is a side effect:

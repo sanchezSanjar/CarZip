@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { dirname, join, resolve, sep } from 'path';
+import { UPLOADS_ROOT } from '@app/common/config/uploads';
 
 /**
  * Where image files live. The rest of the app only knows this interface, so moving from the local disk
@@ -21,7 +22,7 @@ const UPLOADED_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 /** local disk: ./uploads, served by main.ts at /uploads */
 @Injectable()
 export class LocalStorageService extends StorageService {
-	public static readonly ROOT = resolve(process.cwd(), 'uploads');
+	public static readonly ROOT = UPLOADS_ROOT;
 
 	public async save(key: string, data: Buffer): Promise<string> {
 		const path = this.pathOf(key);

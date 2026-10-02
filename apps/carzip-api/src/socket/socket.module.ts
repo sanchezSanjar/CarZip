@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../components/auth/auth.module';
-import MemberSchema from '../schemas/Member.model';
+import MemberSchema from '@app/common/schemas/Member.model';
 import { SocketGateway } from './socket.gateway';
 
 @Module({

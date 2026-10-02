@@ -30,9 +30,9 @@ import {
 	CarStatus,
 	CarTransmission,
 	CarType,
-} from '../../enums/car.enum';
-import { Direction } from '../../enums/common.enum';
-import { CAR_YEAR_MIN, carYearMax, isValidModel } from '../../config/car-catalog';
+} from '@app/common/enums/car.enum';
+import { Direction } from '@app/common/enums/common.enum';
+import { CAR_YEAR_MIN, carYearMax, isValidModel } from '@app/common/config/car-catalog';
 import { Satisfies } from '../../validators/satisfies';
 
 @InputType()

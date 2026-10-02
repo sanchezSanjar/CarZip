@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import { SolapiMessageService } from 'solapi';
-import { Message } from '../../libs/enums/common.enum';
+import { Message } from '@app/common/enums/common.enum';
 
 export interface SmsResult {
 	groupId: string | null; // Solapi's id for this send (search it in the Solapi console). null in log-only mode

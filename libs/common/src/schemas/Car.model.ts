@@ -10,8 +10,8 @@ import {
 	CarStatus,
 	CarTransmission,
 	CarType,
-} from '../libs/enums/car.enum';
-import { CAR_YEAR_MIN, carYearMax, isValidModel } from '../libs/config/car-catalog';
+} from '../enums/car.enum';
+import { CAR_YEAR_MIN, carYearMax, isValidModel } from '../config/car-catalog';
 
 const CarSchema = new Schema(
 	{

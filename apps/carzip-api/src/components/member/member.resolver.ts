@@ -12,7 +12,7 @@ import {
 	MembersInquiry,
 } from '../../libs/dto/member/member.input';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
-import { MemberType } from '../../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WithoutGuard } from '../auth/guards/without.guard';

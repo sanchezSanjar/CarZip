@@ -13,10 +13,10 @@ import {
 	ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
+import { MemberAuthType, MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { Satisfies } from '../../validators/satisfies';
 import { availableAgentSorts, availableMemberSorts } from '../../config';
-import { Direction, Message } from '../../enums/common.enum';
+import { Direction, Message } from '@app/common/enums/common.enum';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 export const PHONE_REGEX = /^01[016789]\d{7,8}$/;

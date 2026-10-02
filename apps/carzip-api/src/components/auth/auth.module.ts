@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
-import MemberSchema from '../../schemas/Member.model';
+import MemberSchema from '@app/common/schemas/Member.model';
 import { AuthService } from './auth.service';
 
 @Module({

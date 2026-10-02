@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { IsIn, IsMongoId, IsOptional, IsUrl, Length } from 'class-validator';
-import { BoardArticleStatus } from '../../enums/board-article.enum';
+import { BoardArticleStatus } from '@app/common/enums/board-article.enum';
 
 /**
  * updateBoardArticle input: edit an article, or delete it (articleStatus: DELETE).

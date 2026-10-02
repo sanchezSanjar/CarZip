@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { IsEmail, IsIn, IsMongoId, IsNotEmpty, IsOptional, Length, Matches, ValidateIf } from 'class-validator';
-import { MemberStatus, MemberType } from '../../enums/member.enum';
+import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { CONTACT_PHONE_REGEX, NICK_REGEX } from './member.input';
 
 /**

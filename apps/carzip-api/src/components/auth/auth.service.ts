@@ -5,8 +5,8 @@ import { compare, genSalt, hash } from 'bcryptjs';
 import { Model, Types } from 'mongoose';
 import { Member } from '../../libs/dto/member/member';
 import { AuthMemberData, JwtPayload } from '../../libs/types/auth';
-import { Message } from '../../libs/enums/common.enum';
-import { MemberStatus } from '../../libs/enums/member.enum';
+import { Message } from '@app/common/enums/common.enum';
+import { MemberStatus } from '@app/common/enums/member.enum';
 
 type MemberAuthFields = AuthMemberData & { passwordChangedAt?: Date };
 

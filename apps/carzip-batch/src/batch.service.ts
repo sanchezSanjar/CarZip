@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Car } from '../../carzip-api/src/libs/dto/car/car';
-import { Member } from '../../carzip-api/src/libs/dto/member/member';
-import { CarStatus } from '../../carzip-api/src/libs/enums/car.enum';
-import { MemberStatus, MemberType } from '../../carzip-api/src/libs/enums/member.enum';
+import { CarStatus } from '@app/common/enums/car.enum';
+import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
+
+/** the batch only updates ranks: the GraphQL types of the API are not needed here */
+type CarDoc = { carStatus: CarStatus; carRank: number };
+type MemberDoc = { memberType: MemberType; memberStatus: MemberStatus; memberRank: number };
 
 /** a counter in a pipeline update. A missing field counts as 0 (otherwise $add gives null) */
 const counter = (field: string) => ({ $ifNull: [`$${field}`, 0] });
@@ -17,8 +19,8 @@ const counter = (field: string) => ({ $ifNull: [`$${field}`, 0] });
 @Injectable()
 export class BatchService {
 	constructor(
-		@InjectModel('Car') private readonly carModel: Model<Car>,
-		@InjectModel('Member') private readonly memberModel: Model<Member>,
+		@InjectModel('Car') private readonly carModel: Model<CarDoc>,
+		@InjectModel('Member') private readonly memberModel: Model<MemberDoc>,
 	) {}
 
 	/** reset every rank, including cars/agents that are no longer ACTIVE (otherwise their old rank stays forever) */

@@ -7,9 +7,9 @@ import { AuthService } from '../auth/auth.service';
 import { RequestOtpInput, ResetPasswordInput, VerifyOtpInput } from '../../libs/dto/otp/otp.input';
 import { VerifyOtpResult } from '../../libs/dto/otp/otp';
 import { Member } from '../../libs/dto/member/member';
-import { OtpPurpose, OtpStatus } from '../../libs/enums/otp.enum';
-import { MemberStatus } from '../../libs/enums/member.enum';
-import { Message } from '../../libs/enums/common.enum';
+import { OtpPurpose, OtpStatus } from '@app/common/enums/otp.enum';
+import { MemberStatus } from '@app/common/enums/member.enum';
+import { Message } from '@app/common/enums/common.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 
 const MINUTE = 60 * 1000;

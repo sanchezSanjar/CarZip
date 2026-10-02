@@ -3,8 +3,8 @@ import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service';
 import { getRequest } from '../auth.request';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { MemberType } from '../../../libs/enums/member.enum';
-import { Message } from '../../../libs/enums/common.enum';
+import { MemberType } from '@app/common/enums/member.enum';
+import { Message } from '@app/common/enums/common.enum';
 
 /**
  * Authorization: logged in AND one of the @Roles(...) on the handler. Authenticates by itself,

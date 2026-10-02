@@ -1,5 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { BoardArticleCategory, BoardArticleStatus } from '../../enums/board-article.enum';
+import { BoardArticleCategory, BoardArticleStatus } from '@app/common/enums/board-article.enum';
 import { AgentPublic } from '../car/car';
 import { TotalCounter } from '../member/member';
 import { MeLiked } from '../like/like';

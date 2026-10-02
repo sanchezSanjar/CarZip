@@ -27,7 +27,7 @@ import {
 	CarStatus,
 	CarTransmission,
 	CarType,
-} from '../../enums/car.enum';
+} from '@app/common/enums/car.enum';
 
 /**
  * updateCar input (Car Listing flowchart: "Agent action, own cars only").

@@ -1,8 +1,8 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { AgentPublic } from '../car/car';
 import { TotalCounter } from '../member/member';
-import { CarBrand, CarStatus } from '../../enums/car.enum';
-import { TestDriveStatus } from '../../enums/test-drive.enum';
+import { CarBrand, CarStatus } from '@app/common/enums/car.enum';
+import { TestDriveStatus } from '@app/common/enums/test-drive.enum';
 
 /** the car of a test drive: enough for a list row */
 @ObjectType()

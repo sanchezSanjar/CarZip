@@ -17,12 +17,12 @@ import {
 	MemberInput,
 	MembersInquiry,
 } from '../../libs/dto/member/member.input';
-import { OtpPurpose } from '../../libs/enums/otp.enum';
+import { OtpPurpose } from '@app/common/enums/otp.enum';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
 import { Member, Members } from '../../libs/dto/member/member';
-import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
-import { Direction, Message } from '../../libs/enums/common.enum';
+import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
+import { Direction, Message } from '@app/common/enums/common.enum';
 import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { lookupAuthMemberFollowed, lookupAuthMemberLiked } from '../../libs/utils/lookup';
 import { AuthService } from '../auth/auth.service';
@@ -32,10 +32,10 @@ import { CarService } from '../car/car.service';
 import { TestDriveService } from '../test-drive/test-drive.service';
 import { NotificationService } from '../notification/notification.service';
 import { LikeService } from '../like/like.service';
-import { LikeGroup } from '../../libs/enums/like.enum';
+import { LikeGroup } from '@app/common/enums/like.enum';
 import { MeFollowed } from '../../libs/dto/follow/follow';
-import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
-import { ViewGroup } from '../../libs/enums/view.enum';
+import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
+import { ViewGroup } from '@app/common/enums/view.enum';
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {

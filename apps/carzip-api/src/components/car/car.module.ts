@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import CarSchema from '../../schemas/Car.model';
-import MemberSchema from '../../schemas/Member.model';
-import BlockSchema from '../../schemas/Block.model';
+import CarSchema from '@app/common/schemas/Car.model';
+import MemberSchema from '@app/common/schemas/Member.model';
+import BlockSchema from '@app/common/schemas/Block.model';
 import { CarService } from './car.service';
 import { CarResolver } from './car.resolver';
 import { AuthModule } from '../auth/auth.module';

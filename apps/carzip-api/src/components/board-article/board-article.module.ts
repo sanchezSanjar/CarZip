@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import BoardArticleSchema from '../../schemas/BoardArticle.model';
-import MemberSchema from '../../schemas/Member.model';
-import BlockSchema from '../../schemas/Block.model';
+import BoardArticleSchema from '@app/common/schemas/BoardArticle.model';
+import MemberSchema from '@app/common/schemas/Member.model';
+import BlockSchema from '@app/common/schemas/Block.model';
 import { BoardArticleResolver } from './board-article.resolver';
 import { BoardArticleService } from './board-article.service';
 import { AuthModule } from '../auth/auth.module';

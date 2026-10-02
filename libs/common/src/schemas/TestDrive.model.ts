@@ -1,5 +1,5 @@
 import { Schema } from 'mongoose';
-import { TestDriveStatus } from '../libs/enums/test-drive.enum';
+import { TestDriveStatus } from '../enums/test-drive.enum';
 
 const TestDriveSchema = new Schema(
 	{

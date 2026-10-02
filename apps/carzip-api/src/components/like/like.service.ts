@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CarsPage } from '../../libs/dto/car/car';
 import { OrdinaryInquiry } from '../../libs/dto/car/car.input';
-import { LikeGroup } from '../../libs/enums/like.enum';
+import { LikeGroup } from '@app/common/enums/like.enum';
 import { refsToCarsPage } from '../../libs/utils/car-query';
 import { Like, MeLiked } from '../../libs/dto/like/like';
 import { LikeInput } from '../../libs/dto/like/like.input';

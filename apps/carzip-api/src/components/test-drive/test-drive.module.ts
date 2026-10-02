@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import TestDriveSchema from '../../schemas/TestDrive.model';
-import CarSchema from '../../schemas/Car.model';
-import BlockSchema from '../../schemas/Block.model';
+import TestDriveSchema from '@app/common/schemas/TestDrive.model';
+import CarSchema from '@app/common/schemas/Car.model';
+import BlockSchema from '@app/common/schemas/Block.model';
 import { TestDriveResolver } from './test-drive.resolver';
 import { TestDriveService } from './test-drive.service';
 import { AuthModule } from '../auth/auth.module';

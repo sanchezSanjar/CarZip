@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { TestDriveStatus } from '../../carzip-api/src/libs/enums/test-drive.enum';
-import { NotificationGroup, NotificationType } from '../../carzip-api/src/libs/enums/notification.enum';
-import { NotificationInput } from '../../carzip-api/src/libs/dto/notification/notification.input';
+import { TestDriveStatus } from '@app/common/enums/test-drive.enum';
+import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
+import { NotificationInput } from '@app/common/types/notification';
 
 const HOUR = 60 * 60 * 1000;
 const REMIND_BEFORE = 24 * HOUR; // "your test drive is coming up" about a day before

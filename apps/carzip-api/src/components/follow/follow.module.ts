@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import FollowSchema from '../../schemas/Follow.model';
-import MemberSchema from '../../schemas/Member.model';
-import BlockSchema from '../../schemas/Block.model';
+import FollowSchema from '@app/common/schemas/Follow.model';
+import MemberSchema from '@app/common/schemas/Member.model';
+import BlockSchema from '@app/common/schemas/Block.model';
 import { FollowResolver } from './follow.resolver';
 import { FollowService } from './follow.service';
 import { AuthModule } from '../auth/auth.module';

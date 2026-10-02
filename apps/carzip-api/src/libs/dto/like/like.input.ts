@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { LikeGroup } from '../../enums/like.enum';
+import { LikeGroup } from '@app/common/enums/like.enum';
 
 /**
  * server-side only (never sent by a client): the liker always comes from the JWT,

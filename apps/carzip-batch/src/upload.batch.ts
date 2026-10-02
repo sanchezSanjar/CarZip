@@ -3,8 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { readdir, stat, unlink } from 'fs/promises';
 import { join } from 'path';
 import { Model } from 'mongoose';
-import { LocalStorageService } from '../../carzip-api/src/components/upload/storage.service';
-import { UploadTarget } from '../../carzip-api/src/libs/enums/upload.enum';
+import { UPLOADS_ROOT } from '@app/common/config/uploads';
+import { UploadTarget } from '@app/common/enums/upload.enum';
 
 const GRACE = 24 * 60 * 60 * 1000; // an upload has a day to be attached to a car / profile / article
 // only files the API produced: <uuid>.webp and its <uuid>_thumb.webp. Anything else in the folder is never touched.
@@ -17,7 +17,7 @@ const URL_UUID =
 /**
  * Uploaded images nobody uses: a dealer uploads photos and never saves the car, a member changes their
  * profile photo, a car is edited to drop photos. After a day they are deleted (main + thumbnail).
- * Works on the local disk the API writes to (LocalStorageService.ROOT); with object storage this job
+ * Works on the local disk the API writes to (UPLOADS_ROOT); with object storage this job
  * would list the bucket instead.
  */
 @Injectable()
@@ -31,7 +31,7 @@ export class UploadBatchService {
 	) {}
 
 	/** returns how many images (main + thumbnail pairs, or lone thumbnails) were deleted */
-	public async removeUnused(root = LocalStorageService.ROOT): Promise<number> {
+	public async removeUnused(root = UPLOADS_ROOT): Promise<number> {
 		// 1. old enough files on disk FIRST, then what the DB uses: an image attached in between is still seen as used
 		const candidates: { dir: string; uuid: string; files: string[] }[] = [];
 		for (const target of Object.values(UploadTarget)) {

@@ -9,7 +9,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { MemberType } from '../../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 
 @Resolver()

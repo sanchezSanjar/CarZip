@@ -17,11 +17,11 @@ import {
 import { BoardArticleUpdate, BoardArticleUpdateByAdmin } from '../../libs/dto/board-article/board-article.update';
 import { AgentPublic } from '../../libs/dto/car/car';
 import { Member } from '../../libs/dto/member/member';
-import { BoardArticleStatus } from '../../libs/enums/board-article.enum';
-import { Direction, Message } from '../../libs/enums/common.enum';
-import { MemberType } from '../../libs/enums/member.enum';
-import { UploadTarget } from '../../libs/enums/upload.enum';
-import { ViewGroup } from '../../libs/enums/view.enum';
+import { BoardArticleStatus } from '@app/common/enums/board-article.enum';
+import { Direction, Message } from '@app/common/enums/common.enum';
+import { MemberType } from '@app/common/enums/member.enum';
+import { UploadTarget } from '@app/common/enums/upload.enum';
+import { ViewGroup } from '@app/common/enums/view.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { escapeRegex, shapeIntoMongoObjectId } from '../../libs/config';
 import { lookupAuthMemberLiked, lookupPublicMember, PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
@@ -30,8 +30,8 @@ import { UploadService } from '../upload/upload.service';
 import { LikeService } from '../like/like.service';
 import { NotificationService } from '../notification/notification.service';
 import { CommentService } from '../comment/comment.service';
-import { LikeGroup } from '../../libs/enums/like.enum';
-import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
+import { LikeGroup } from '@app/common/enums/like.enum';
+import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
 
 /**
  * Community board. Who does what (the user's rule, beyond the flowchart):

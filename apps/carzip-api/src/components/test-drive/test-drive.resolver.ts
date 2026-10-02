@@ -4,7 +4,7 @@ import { Types } from 'mongoose';
 import { TestDriveService } from './test-drive.service';
 import { TestDrive, TestDrives } from '../../libs/dto/test-drive/test-drive';
 import { TestDriveInput, TestDrivesInquiry, TestDriveUpdate } from '../../libs/dto/test-drive/test-drive.input';
-import { MemberType } from '../../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 import { AuthMemberData } from '../../libs/types/auth';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';

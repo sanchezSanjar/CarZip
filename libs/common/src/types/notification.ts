@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { NotificationGroup, NotificationType } from '../../enums/notification.enum';
+import { NotificationGroup, NotificationType } from '../enums/notification.enum';
 
 /** server-side only: notifications are created by the system (approve, like, comment...), never by a client */
 export interface NotificationInput {

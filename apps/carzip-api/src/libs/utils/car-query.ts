@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PipelineStage, Types } from 'mongoose';
-import { CarMarket, CarSort, CarStatus } from '../enums/car.enum';
-import { Direction } from '../enums/common.enum';
+import { CarMarket, CarSort, CarStatus } from '@app/common/enums/car.enum';
+import { Direction } from '@app/common/enums/common.enum';
 import { CarsInquiry, NumberRange, OrdinaryInquiry } from '../dto/car/car.input';
 import { lookupAuthMemberLiked, lookupPublicMember } from './lookup';
 

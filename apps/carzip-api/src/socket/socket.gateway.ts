@@ -13,7 +13,7 @@ import { Model } from 'mongoose';
 import { Server, WebSocket } from 'ws';
 import { AuthService } from '../components/auth/auth.service';
 import { Member } from '../libs/dto/member/member';
-import { MemberType } from '../libs/enums/member.enum';
+import { MemberType } from '@app/common/enums/member.enum';
 
 /** who sent a message / joined: PUBLIC fields only. null = guest */
 interface ChatMember {

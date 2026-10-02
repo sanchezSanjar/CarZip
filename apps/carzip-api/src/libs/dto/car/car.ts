@@ -12,7 +12,7 @@ import {
 	CarStatus,
 	CarTransmission,
 	CarType,
-} from '../../enums/car.enum';
+} from '@app/common/enums/car.enum';
 
 /** What the public may see about an agent. Verification data (business no., card) is NEVER here. */
 @ObjectType()

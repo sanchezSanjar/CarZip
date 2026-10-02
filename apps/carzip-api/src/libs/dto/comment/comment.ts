@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { CommentGroup, CommentStatus } from '../../enums/comment.enum';
+import { CommentGroup, CommentStatus } from '@app/common/enums/comment.enum';
 import { AgentPublic } from '../car/car';
 import { TotalCounter } from '../member/member';
 

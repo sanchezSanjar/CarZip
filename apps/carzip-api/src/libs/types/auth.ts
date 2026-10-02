@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { Types } from 'mongoose';
-import { MemberStatus, MemberType } from '../enums/member.enum';
+import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 
 /** what createToken signs and verifyToken returns. iat / exp are added by jsonwebtoken. */
 export interface JwtPayload {

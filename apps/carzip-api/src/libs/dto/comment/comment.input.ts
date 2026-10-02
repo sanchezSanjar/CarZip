@@ -1,8 +1,8 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsIn, IsInt, IsMongoId, IsOptional, Length, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CommentGroup } from '../../enums/comment.enum';
-import { Direction } from '../../enums/common.enum';
+import { CommentGroup } from '@app/common/enums/comment.enum';
+import { Direction } from '@app/common/enums/common.enum';
 import { availableCommentSorts } from '../../config';
 
 /** createComment input. The commenter (memberId) always comes from the JWT, never from the client. */
