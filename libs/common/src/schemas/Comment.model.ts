@@ -13,5 +13,6 @@ const CommentSchema = new Schema(
 );
 
 CommentSchema.index({ commentRefId: 1, commentStatus: 1, createdAt: -1 });
+CommentSchema.index({ memberId: 1, commentStatus: 1, createdAt: -1 }); // getMyComments
 
 export default CommentSchema;

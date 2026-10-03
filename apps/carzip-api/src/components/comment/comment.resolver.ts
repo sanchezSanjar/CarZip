@@ -3,7 +3,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CommentService } from './comment.service';
 import { Comment, Comments } from '../../libs/dto/comment/comment';
-import { CommentInput, CommentsInquiry } from '../../libs/dto/comment/comment.input';
+import { CommentInput, CommentsInquiry, MyCommentsInquiry } from '../../libs/dto/comment/comment.input';
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
@@ -40,6 +40,16 @@ export class CommentResolver {
 	@Query(() => Comments)
 	public async getComments(@Args('input') input: CommentsInquiry): Promise<Comments> {
 		return this.commentService.getComments(input);
+	}
+
+	// my own comments everywhere (cars, articles, dealer pages), newest first
+	@UseGuards(AuthGuard)
+	@Query(() => Comments)
+	public async getMyComments(
+		@Args('input') input: MyCommentsInquiry,
+		@AuthMember('_id') memberId: Types.ObjectId,
+	): Promise<Comments> {
+		return this.commentService.getMyComments(memberId, input);
 	}
 
 	/** ADMIN: only admins delete comments (flowchart) */

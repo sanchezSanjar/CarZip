@@ -443,6 +443,7 @@ Statuses: `REQUEST` → `CONFIRM` / `REJECT` / `CANCEL`; `CONFIRM` → `COMPLETE
 | ------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
 | `likeTargetCar(carId)` / `likeTargetBoardArticle(articleId)` / `likeTargetMember(memberId)` | logged in               | toggle: call again to un-like; returns the item with the new count. Not your own items.    |
 | `getComments(input: CommentsInquiry)`                                                       | public                  | `search: { commentRefId }` (a car, article or member id); `sort`: `createdAt`, `updatedAt` |
+| `getMyComments(input: { page, limit })` | logged in | my own comments everywhere, newest first; each has `targetData { title, image }` (the car / article / dealer it is on, null if gone) |
 | `createComment(input: { commentGroup, commentContent, commentRefId })`                      | logged in               | 1–500 chars; the target must be ACTIVE                                                     |
 | `updateComment(input: { _id, commentContent })`                                             | logged in (own comment) | text only; only admins delete comments                                                     |
 | `subscribe(input: "<agentId>")`                                                             | logged in               | follow an ACTIVE **agent** (only agents can be followed; not yourself)                     |

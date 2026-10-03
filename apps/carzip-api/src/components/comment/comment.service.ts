@@ -9,7 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Comment, Comments } from '../../libs/dto/comment/comment';
-import { CommentInput, CommentsInquiry } from '../../libs/dto/comment/comment.input';
+import { CommentInput, CommentsInquiry, MyCommentsInquiry } from '../../libs/dto/comment/comment.input';
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 import { Car } from '../../libs/dto/car/car';
 import { BoardArticle } from '../../libs/dto/board-article/board-article';
@@ -117,6 +117,73 @@ export class CommentService {
 							{ $skip: (input.page - 1) * input.limit },
 							{ $limit: input.limit },
 							...lookupPublicMember('memberData'),
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+		return result ?? { list: [], metaCounter: [] };
+	}
+
+	/**
+	 * My own ACTIVE comments, newest first. Each one carries targetData: the title (and photo) of the car,
+	 * article or dealer it is on, so the list can say where it was written and link there.
+	 */
+	public async getMyComments(memberId: Types.ObjectId, input: MyCommentsInquiry): Promise<Comments> {
+		const [result] = await this.commentModel
+			.aggregate<Comments>([
+				{ $match: { memberId, commentStatus: CommentStatus.ACTIVE } },
+				{ $sort: { createdAt: Direction.DESC, _id: Direction.DESC } },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							// the target is looked up in the collection its group points to (public fields only)
+							{
+								$lookup: {
+									from: 'cars',
+									localField: 'commentRefId',
+									foreignField: '_id',
+									as: 'car',
+									pipeline: [{ $project: { title: '$carTitle', image: { $first: '$carImages' } } }],
+								},
+							},
+							{
+								$lookup: {
+									from: 'boardArticles',
+									localField: 'commentRefId',
+									foreignField: '_id',
+									as: 'article',
+									pipeline: [{ $project: { title: '$articleTitle', image: '$articleImage' } }],
+								},
+							},
+							{
+								$lookup: {
+									from: 'members',
+									localField: 'commentRefId',
+									foreignField: '_id',
+									as: 'member',
+									pipeline: [
+										{ $project: { title: { $ifNull: ['$agentCompany', '$memberNick'] }, image: '$memberImage' } },
+									],
+								},
+							},
+							{
+								$addFields: {
+									targetData: {
+										$switch: {
+											branches: [
+												{ case: { $eq: ['$commentGroup', CommentGroup.CAR] }, then: { $first: '$car' } },
+												{ case: { $eq: ['$commentGroup', CommentGroup.ARTICLE] }, then: { $first: '$article' } },
+											],
+											default: { $first: '$member' },
+										},
+									},
+								},
+							},
+							{ $project: { car: 0, article: 0, member: 0 } },
 						],
 						metaCounter: [{ $count: 'total' }],
 					},

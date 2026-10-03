@@ -59,3 +59,18 @@ export class CommentsInquiry {
 	@Field(() => CISearch)
 	search: CISearch;
 }
+
+/** getMyComments input: my own ACTIVE comments, newest first, page-based */
+@InputType()
+export class MyCommentsInquiry {
+	@IsInt()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	@Field(() => Int)
+	limit: number;
+}
