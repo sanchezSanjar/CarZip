@@ -12,7 +12,6 @@
     "outDir": "./dist",
     "types": [
       "node",
-      "jest",
       "multer"
     ],
     "incremental": true,

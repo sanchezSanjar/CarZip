@@ -122,6 +122,12 @@ npm run start:dev:batch    # batch server
 
 Open `http://localhost:3007/graphql` in the browser to explore every query and mutation.
 
+Run the tests (business rules with fake data: no database, network or SMS needed):
+
+```bash
+npm test
+```
+
 Build and run in production mode:
 
 ```bash
