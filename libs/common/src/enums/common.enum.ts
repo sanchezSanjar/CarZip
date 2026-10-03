@@ -14,6 +14,7 @@ export enum Message {
 	USED_PHONE = 'This phone number is already registered!',
 	USED_BUSINESS_NO = 'This business number is already registered!',
 	WRONG_LOGIN = 'Wrong nick or password!',
+	LOGIN_TOO_MANY = 'Too many failed log-in attempts. Please try again in 15 minutes.',
 	BLOCKED_MEMBER = 'Your account has been blocked. Contact support.',
 	TOKEN_NOT_EXIST = 'Bearer token is not provided!',
 	NOT_AUTHENTICATED = 'You are not authenticated, please login first!',

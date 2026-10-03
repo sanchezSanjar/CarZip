@@ -94,6 +94,7 @@ mutation {
 | `FORBIDDEN` "Your agent account is under review…"  | agent still `PENDING`                              |
 | `FORBIDDEN` "Your agent application was rejected…" | agent `REJECTED` (message includes the reason)     |
 | `FORBIDDEN` blocked / unavailable                  | member `BLOCK` or `DELETE`                         |
+| `TOO_MANY_REQUESTS` "Too many failed log-in attempts…" | 5 wrong passwords for one account (or 30 from one IP) within 15 minutes; wait 15 minutes |
 
 ---
 

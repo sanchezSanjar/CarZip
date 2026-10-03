@@ -1,5 +1,6 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver, Context } from '@nestjs/graphql';
+import type { Request } from 'express';
 import { Types } from 'mongoose';
 import { MemberService } from './member.service';
 import { Member, Members } from '../../libs/dto/member/member';
@@ -32,8 +33,8 @@ export class MemberResolver {
 	}
 
 	@Mutation(() => Member)
-	public async login(@Args('input') input: LoginInput): Promise<Member> {
-		return this.memberService.login(input);
+	public async login(@Args('input') input: LoginInput, @Context('req') req: Request): Promise<Member> {
+		return this.memberService.login(input, req.ip ?? 'unknown');
 	}
 
 	// Authenticated

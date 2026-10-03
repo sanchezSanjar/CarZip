@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import MemberSchema from '@app/common/schemas/Member.model';
 import BlockSchema from '@app/common/schemas/Block.model';
 import FollowSchema from '@app/common/schemas/Follow.model';
+import LoginAttemptSchema from '@app/common/schemas/LoginAttempt.model';
 import { MemberResolver } from './member.resolver';
 import { MemberService } from './member.service';
 import { AuthModule } from '../auth/auth.module';
@@ -19,6 +20,7 @@ import { TestDriveModule } from '../test-drive/test-drive.module';
 			{ name: 'Member', schema: MemberSchema },
 			{ name: 'Block', schema: BlockSchema }, // personal blocks stop likes too
 			{ name: 'Follow', schema: FollowSchema }, // "do I follow this member?"
+			{ name: 'LoginAttempt', schema: LoginAttemptSchema }, // failed logins, for the login limit
 		]),
 		AuthModule,
 		OtpModule,

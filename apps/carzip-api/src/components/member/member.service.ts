@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import {
 	BadRequestException,
 	ForbiddenException,
+	HttpException,
+	HttpStatus,
 	Injectable,
 	InternalServerErrorException,
 	Logger,
@@ -38,6 +40,11 @@ import { LikeGroup } from '@app/common/enums/like.enum';
 import { MeFollowed } from '../../libs/dto/follow/follow';
 import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
 import { ViewGroup } from '@app/common/enums/view.enum';
+
+// login limit: failed attempts counted over 15 minutes, per account and per IP (many accounts tried from one place)
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILURES_PER_ACCOUNT = 5;
+const MAX_FAILURES_PER_IP = 30;
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {
@@ -86,6 +93,8 @@ export class MemberService {
 
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
+		@InjectModel('LoginAttempt')
+		private readonly loginAttemptModel: Model<{ loginKey: string; loginIp: string; createdAt: Date }>,
 		private readonly authService: AuthService,
 		private readonly otpService: OtpService,
 		private readonly viewService: ViewService,
@@ -201,7 +210,22 @@ export class MemberService {
 		}
 	}
 
-	public async login(input: LoginInput): Promise<Member> {
+	public async login(input: LoginInput, ip = 'unknown'): Promise<Member> {
+		// slow down password guessing: too many recent failures for this account (or from this IP) are refused first
+		const loginKey = String(input.memberPhone ?? input.memberNick ?? '').toLowerCase();
+		const since = new Date(Date.now() - LOGIN_WINDOW_MS);
+		const [keyFailures, ipFailures] = await Promise.all([
+			this.loginAttemptModel.countDocuments({ loginKey, createdAt: { $gte: since } }).exec(),
+			this.loginAttemptModel.countDocuments({ loginIp: ip, createdAt: { $gte: since } }).exec(),
+		]);
+		if (keyFailures >= MAX_FAILURES_PER_ACCOUNT || ipFailures >= MAX_FAILURES_PER_IP) {
+			throw new HttpException(Message.LOGIN_TOO_MANY, HttpStatus.TOO_MANY_REQUESTS);
+		}
+		const failed = async () => {
+			await this.loginAttemptModel.create({ loginKey, loginIp: ip });
+			return new UnauthorizedException(Message.WRONG_LOGIN);
+		};
+
 		const filter = input.memberPhone ? { memberPhone: input.memberPhone } : { memberNick: input.memberNick };
 		// memberPassword has select: false, so it must be asked for explicitly
 		const found = await this.memberModel
@@ -211,9 +235,11 @@ export class MemberService {
 			.exec();
 
 		// same message for "not found" and "wrong password": don't reveal which one was wrong
-		if (!found) throw new UnauthorizedException(Message.WRONG_LOGIN);
+		if (!found) throw await failed();
 		const isMatch = await this.authService.comparePassword(input.memberPassword, found.memberPassword);
-		if (!isMatch) throw new UnauthorizedException(Message.WRONG_LOGIN);
+		if (!isMatch) throw await failed();
+		// the right password: this account's failures are forgotten
+		await this.loginAttemptModel.deleteMany({ loginKey }).exec();
 
 		// only after the password matched: tell the real owner why they can't get in. Only ACTIVE gets a token.
 		switch (found.memberStatus) {

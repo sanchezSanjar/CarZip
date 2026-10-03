@@ -109,6 +109,8 @@ SOLAPI_SENDER_NUMBER=
 # production only
 CORS_ORIGINS=https://your-domain.com
 UPLOADS_PUBLIC_URL=https://your-domain.com
+# how many proxies (e.g. nginx) stand in front of the API, so login and SMS limits see the real visitor IP
+TRUST_PROXY=1
 ```
 
 Run in development:
