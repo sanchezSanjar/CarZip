@@ -13,6 +13,7 @@ export const BATCH_UPLOAD_CLEANUP = 'BATCH_UPLOAD_CLEANUP';
 export const BATCH_STALE_LISTINGS = 'BATCH_STALE_LISTINGS';
 export const BATCH_PENDING_AGENTS = 'BATCH_PENDING_AGENTS';
 export const BATCH_RECOUNT = 'BATCH_RECOUNT';
+export const BATCH_CHAT_CLEANUP = 'BATCH_CHAT_CLEANUP';
 
 /** jobs run on Korea time, whatever timezone the server is in (cloud servers are usually UTC) */
 export const BATCH_TIMEZONE = 'Asia/Seoul';

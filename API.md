@@ -585,7 +585,7 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 
 | `event`       | Payload                                                                              | When                                       |
 | ------------- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
-| `getMessages` | `list`: the last 5 messages                                                          | right after you connect                    |
+| `getMessages` | `list`: the last 15 messages (kept across server restarts)                           | right after you connect                    |
 | `info`        | `totalClients`, `memberData` (or `null` for a guest), `action`: `joined` / `left`    | someone joins or leaves                    |
 | `message`     | `text`, `memberData` (`_id`, `memberNick`, `memberImage`, `memberType`), `createdAt` | a new message, sent to everyone            |
 | `error`       | `message`                                                                            | only to you, when your message was refused |

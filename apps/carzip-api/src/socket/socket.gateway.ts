@@ -14,6 +14,7 @@ import { Server, WebSocket } from 'ws';
 import { AuthService } from '../components/auth/auth.service';
 import { Member } from '../libs/dto/member/member';
 import { MemberType } from '@app/common/enums/member.enum';
+import { CHAT_HISTORY } from '@app/common/config/chat';
 
 /** who sent a message / joined: PUBLIC fields only. null = guest */
 interface ChatMember {
@@ -53,6 +54,28 @@ interface ErrorPayload {
 
 type OutgoingPayload = InfoPayload | MessagePayload | MessagesPayload | ErrorPayload;
 
+/** one saved message (chatMessages) */
+interface ChatMessageDoc {
+	chatText: string;
+	memberId: { toString(): string };
+	memberNick: string;
+	memberImage?: string;
+	memberType: MemberType;
+	createdAt: Date;
+}
+
+const toPayload = (m: ChatMessageDoc): MessagePayload => ({
+	event: 'message',
+	text: m.chatText,
+	memberData: {
+		_id: m.memberId.toString(),
+		memberNick: m.memberNick,
+		memberImage: m.memberImage,
+		memberType: m.memberType,
+	},
+	createdAt: new Date(m.createdAt).toISOString(),
+});
+
 /** a connection that passed the login check */
 interface ChatClient {
 	token: string | null; // kept to re-check the member on every message
@@ -60,7 +83,6 @@ interface ChatClient {
 }
 
 const MESSAGE_MAX_LENGTH = 500;
-const MESSAGE_HISTORY = 5; // how many recent messages a newcomer receives
 const RATE_LIMIT_COUNT = 5; // at most 5 messages ...
 const RATE_LIMIT_WINDOW = 5_000; // ... per 5 seconds per connection
 
@@ -77,7 +99,8 @@ const CLOSE_FORBIDDEN = 4003; // blocked member
  *                 { "event": "info", totalClients, memberData, action: "joined" | "left" } to everyone,
  *                 { "event": "message", text, memberData, createdAt } to everyone,
  *                 { "event": "error", message } to the sender only.
- * Guests read only; logged-in ACTIVE members write. Recent messages live in memory (gone on restart).
+ * Guests read only; logged-in ACTIVE members write. Every message is saved (chatMessages); the newest CHAT_HISTORY
+ * are kept in memory for newcomers and reloaded from the database when the server starts.
  */
 @WebSocketGateway({
 	transports: ['websocket'],
@@ -101,10 +124,23 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 	constructor(
 		private readonly authService: AuthService,
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
+		@InjectModel('ChatMessage') private readonly chatMessageModel: Model<ChatMessageDoc>,
 	) {}
 
-	public afterInit(): void {
-		this.logger.log('WebSocket server initialized');
+	public async afterInit(): Promise<void> {
+		// the history survives restarts: the newest messages come back from the database, oldest first
+		const saved = await this.chatMessageModel
+			.find()
+			.sort({ createdAt: -1 })
+			.limit(CHAT_HISTORY)
+			.lean<ChatMessageDoc[]>()
+			.exec()
+			.catch((err: unknown) => {
+				this.logger.error(`chat history not loaded: ${err instanceof Error ? err.message : err}`);
+				return [] as ChatMessageDoc[];
+			});
+		this.messageList.push(...saved.reverse().map(toPayload));
+		this.logger.log(`WebSocket server initialized (${this.messageList.length} saved messages)`);
 	}
 
 	public async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
@@ -168,9 +204,17 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 		if (!member) return;
 		chatClient.member = member;
 
-		const message: MessagePayload = { event: 'message', text, memberData: member, createdAt: new Date().toISOString() };
+		// saved first, so a message everyone saw is never missing from the history after a restart
+		const saved = await this.chatMessageModel.create({
+			chatText: text,
+			memberId: member._id,
+			memberNick: member.memberNick,
+			memberImage: member.memberImage,
+			memberType: member.memberType,
+		});
+		const message = toPayload(saved.toObject());
 		this.messageList.push(message);
-		if (this.messageList.length > MESSAGE_HISTORY) this.messageList.shift();
+		if (this.messageList.length > CHAT_HISTORY) this.messageList.shift();
 
 		// the text is not logged: chat content is the members' private data
 		this.logger.log(`[${member.memberNick}] new message (${text.length} chars)`);
