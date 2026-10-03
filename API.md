@@ -484,6 +484,7 @@ Statuses: `REQUEST` → `CONFIRM` / `REJECT` / `CANCEL`; `CONFIRM` → `COMPLETE
 | `getMyBlocks(input: { page, limit })` | AGENT | my blocked members (`blockedData`), newest first |
 
 - **What a blocked member can't do:** like, comment, follow or request test drives on that agent's things. They can still browse everything and use the rest of CarZip.
+- **Blocking ends a follow:** if the blocked member followed the agent, that follow is removed (both counters go down). Unblocking doesn't restore it; they can follow again.
 - **Not allowed:** blocking yourself, an admin, or a deleted member. Blocking twice gives "You already blocked this member."
 - **No notification:** nobody is notified of a block.
 - **The button:** use `getMember(...).meBlocked` to show Block / Unblock.

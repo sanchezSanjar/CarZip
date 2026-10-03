@@ -8,6 +8,7 @@ import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { lookupPublicMember } from '../../libs/utils/lookup';
 
 type BlockDoc = { _id: Types.ObjectId; blockerId: Types.ObjectId; blockedId: Types.ObjectId; createdAt: Date };
+type FollowDoc = { _id: Types.ObjectId; followerId: Types.ObjectId; followingId: Types.ObjectId };
 type MemberDoc = { _id: Types.ObjectId; memberType: MemberType; memberStatus: MemberStatus; memberBlocks?: number };
 
 /**
@@ -16,12 +17,14 @@ type MemberDoc = { _id: Types.ObjectId; memberType: MemberType; memberStatus: Me
  * browses and uses the rest of CarZip. Existing comments stay (only ADMIN deletes). Never site-wide: global
  * blocking is ADMIN only (memberStatus BLOCK). Nobody is notified: a block is the agent's private decision.
  * memberBlocks on the blocked member = how many agents blocked them (private: only they and admins see it).
+ * Blocking also ends the blocked member's follow of the agent (they leave the agent's followers); unblocking doesn't restore it.
  */
 @Injectable()
 export class BlockService {
 	constructor(
 		@InjectModel('Block') private readonly blockModel: Model<BlockDoc>,
 		@InjectModel('Member') private readonly memberModel: Model<MemberDoc>,
+		@InjectModel('Follow') private readonly followModel: Model<FollowDoc>,
 	) {}
 
 	public async blockMember(agentId: Types.ObjectId, targetId: Types.ObjectId): Promise<Block> {
@@ -39,6 +42,17 @@ export class BlockService {
 			throw err;
 		}
 		await this.memberModel.updateOne({ _id: targetId }, { $inc: { memberBlocks: 1 } }).exec();
+		// a blocked member can't follow the agent, so an existing follow ends too (one atomic delete, counters once)
+		const follow = await this.followModel
+			.findOneAndDelete({ followerId: targetId, followingId: agentId })
+			.lean<FollowDoc>()
+			.exec();
+		if (follow) {
+			await Promise.all([
+				this.memberModel.updateOne({ _id: targetId }, { $inc: { memberFollowings: -1 } }).exec(),
+				this.memberModel.updateOne({ _id: agentId }, { $inc: { memberFollowers: -1 } }).exec(),
+			]);
+		}
 		return this.withProfile(created);
 	}
 
