@@ -13,6 +13,7 @@ import { CarModule } from '../car/car.module';
 import { NotificationModule } from '../notification/notification.module';
 import { LikeModule } from '../like/like.module';
 import { TestDriveModule } from '../test-drive/test-drive.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
 	imports: [
@@ -29,6 +30,7 @@ import { TestDriveModule } from '../test-drive/test-drive.module';
 		NotificationModule,
 		LikeModule,
 		TestDriveModule, // a blocked / deleted member's open test-drive requests are cancelled
+		UploadModule, // "is this profile photo / business card one of our uploads?"
 	],
 	providers: [MemberResolver, MemberService],
 })

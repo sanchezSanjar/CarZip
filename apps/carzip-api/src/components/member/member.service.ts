@@ -40,6 +40,8 @@ import { LikeGroup } from '@app/common/enums/like.enum';
 import { MeFollowed } from '../../libs/dto/follow/follow';
 import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
 import { ViewGroup } from '@app/common/enums/view.enum';
+import { UploadService } from '../upload/upload.service';
+import { UploadTarget } from '@app/common/enums/upload.enum';
 
 // login limit: failed attempts counted over 15 minutes, per account and per IP (many accounts tried from one place)
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -104,11 +106,26 @@ export class MemberService {
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 		@InjectModel('Follow') private readonly followModel: Model<{ followingId: unknown; followerId: unknown }>,
 		private readonly testDriveService: TestDriveService,
+		private readonly uploadService: UploadService,
 	) {}
+
+	/**
+	 * Profile photos and business cards must be images our upload API produced (target member):
+	 * no hot-linked or tracking images on profiles. An empty value (photo removed) is allowed.
+	 */
+	private assertOwnImages(input: { memberImage?: string | null; agentBusinessCard?: string | null }): void {
+		if (input.memberImage && !this.uploadService.isUploadedImage(input.memberImage, UploadTarget.MEMBER)) {
+			throw new BadRequestException(Message.MEMBER_IMAGE_NOT_UPLOADED);
+		}
+		if (input.agentBusinessCard && !this.uploadService.isUploadedImage(input.agentBusinessCard, UploadTarget.MEMBER)) {
+			throw new BadRequestException(Message.BUSINESS_CARD_NOT_UPLOADED);
+		}
+	}
 
 	public async signup(input: MemberInput): Promise<Member> {
 		// the phone must be verified by SMS first (requestOtp + verifyOtp with purpose SIGNUP)
 		await this.otpService.assertPhoneVerified(input.memberPhone);
+		this.assertOwnImages(input);
 		const isAgent = input.memberType === MemberType.AGENT;
 
 		const data = {
@@ -269,6 +286,7 @@ export class MemberService {
 			for (const key of CONTACT_FIELDS) delete data[key]; // only agents have public contacts
 		}
 		if (!Object.keys(data).length) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+		this.assertOwnImages(data);
 
 		let updated: Member | null;
 		try {
@@ -516,6 +534,7 @@ export class MemberService {
 	 * (SMS code to memberPhone), which also proves they own that phone.
 	 */
 	public async createAgentByAdmin(admin: AuthMemberData, input: AgentInputByAdmin): Promise<Member> {
+		this.assertOwnImages(input);
 		const data = {
 			...input,
 			memberType: MemberType.AGENT,

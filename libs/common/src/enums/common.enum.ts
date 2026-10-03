@@ -64,6 +64,8 @@ export enum Message {
 	ARTICLE_REMOVE_ONLY_DELETED = 'Only deleted articles can be removed permanently. Delete the article first.',
 	ARTICLE_IMAGES_NOT_ALLOWED = 'Only agents and admins can upload article images.',
 	ARTICLE_IMAGE_NOT_UPLOADED = 'The article image must be uploaded through CarZip first (POST /upload/image).',
+	MEMBER_IMAGE_NOT_UPLOADED = 'The profile photo must be uploaded through CarZip first (POST /upload/image).',
+	BUSINESS_CARD_NOT_UPLOADED = 'The business card must be uploaded through CarZip first (POST /upload/image).',
 	CAR_IMAGES_NOT_UPLOADED = 'Car photos must be uploaded through CarZip first (POST /upload/images).',
 	TEST_DRIVE_NOT_AVAILABLE = 'Test drives are not available for this car.',
 	TEST_DRIVE_OWN_CAR = 'You cannot request a test drive for your own car.',

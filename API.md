@@ -378,6 +378,7 @@ Images are uploaded over REST, not GraphQL. **Logged in only** (send the `Author
 - **What the server stores:** it re-encodes every image to WebP and removes location (GPS) data.
 - **`images` is all-or-nothing:** one bad file fails the whole request, and the error names that file.
 - **Which URL goes where:** save `url` in `memberImage` / `carImages` / `articleImage` / `agentBusinessCard`, and use `thumbnailUrl` in lists. `carImages` and `articleImage` accept **only** URLs from this API; always upload first for the others too.
+- **Only our uploads:** `carImages`, `articleImage`, `memberImage` and `agentBusinessCard` must be URLs our upload API produced (the matching `target`); any other URL returns `BAD_REQUEST` ("... must be uploaded through CarZip first"). An empty `memberImage` removes the photo.
 - **Unused uploads:** images never attached to anything are deleted after about a day.
 
 ```js
