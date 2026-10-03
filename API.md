@@ -198,7 +198,7 @@ mutation {
 | `memberType`                      | `USER` (default) or `AGENT`; never `ADMIN`                     |
 | `memberFullName`                  | 2–50 chars; required for USER                                  |
 | `agentCompany`                    | 2–100 chars; required for AGENT                                |
-| `agentBusinessNo`                 | `123-45-67890` (dashes optional), unique; optional for now     |
+| `agentBusinessNo`                 | `123-45-67890` (dashes optional), unique; required for AGENT   |
 | `agentBusinessCard`               | image URL (upload it first, target `member`); optional for now |
 | `contactPhone`, `contactWhatsapp` | phone number (`02-123-4567`, `+82 10 …`); agents only          |
 | `contactEmail`                    | email; agents only                                             |

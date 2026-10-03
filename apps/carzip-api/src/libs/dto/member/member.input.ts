@@ -74,8 +74,9 @@ export class MemberInput {
 	@Field(() => String, { nullable: true })
 	agentCompany?: string;
 
-	// TODO(prod): make agentBusinessNo and agentBusinessCard required for AGENT signup
-	@IsOptional()
+	// required for AGENT signup (the admin checks it before approval); the business card photo stays optional
+	@ValidateIf((o: MemberInput) => o.memberType === MemberType.AGENT || o.agentBusinessNo != null)
+	@IsNotEmpty({ message: 'Dealers must give their business registration number' })
 	@Matches(BUSINESS_NO_REGEX, {
 		message: 'Business number must look like 123-45-67890',
 	})
