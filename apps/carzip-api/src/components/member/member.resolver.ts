@@ -37,21 +37,6 @@ export class MemberResolver {
 		return this.memberService.login(input, req.ip ?? 'unknown');
 	}
 
-	// Authenticated
-	@UseGuards(AuthGuard)
-	@Query(() => String)
-	public checkAuth(@AuthMember('memberNick') memberNick: string): string {
-		return `Hi ${memberNick}`;
-	}
-
-	// Authorization check
-	@Roles(MemberType.USER, MemberType.AGENT)
-	@UseGuards(RolesGuard)
-	@Query(() => String)
-	public checkAuthRoles(@AuthMember() authMember: AuthMemberData): string {
-		return `Hi ${authMember.memberNick}, you are ${authMember.memberType} (memberId: ${authMember._id})`;
-	}
-
 	// Authenticated: a member edits their own profile. Who is edited comes from the JWT, never from the input
 	@UseGuards(AuthGuard)
 	@Mutation(() => Member)
