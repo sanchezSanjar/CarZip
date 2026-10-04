@@ -55,10 +55,13 @@ Every job is safe to run twice: each change is conditional on the current state,
 | Database | MongoDB with Mongoose 8 (aggregation pipelines, unique and TTL indexes) |
 | Auth | JWT, bcrypt, role guards |
 | Validation | class-validator / class-transformer (global ValidationPipe) |
-| Real time | WebSocket (`ws` adapter) |
+| Real time | WebSocket (`ws` adapter), Redis pub/sub between API servers |
+| Cache | Redis (ioredis): cached statistics, last 20 chat messages |
 | Scheduling | @nestjs/schedule (cron) |
 | Images | sharp (WebP re-encoding, thumbnails) |
 | SMS | Solapi |
+| Tests | Vitest |
+| Deployment | Docker, Docker Compose |
 | Code quality | ESLint 9, Prettier |
 
 ---
@@ -139,6 +142,18 @@ npx nest build carzip-batch
 npm run start:prod
 npm run start:prod:batch
 ```
+
+### Run with Docker
+
+`docker-compose.yml` starts the API, the batch server and Redis. The image runs the tests and builds both apps.
+MongoDB stays outside Docker (for example MongoDB Atlas): set `MONGO_PROD` in `.env`.
+
+```bash
+docker compose up -d --build   # API on 127.0.0.1:3007, put nginx (or another proxy) in front of it
+docker compose logs -f api
+```
+
+Uploaded images are kept in `./uploads` on the host, so they survive rebuilds.
 
 Other scripts: `npm run lint`, `npm run format`.
 
