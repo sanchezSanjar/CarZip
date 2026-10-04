@@ -99,3 +99,22 @@ export class CarCatalogBrand {
 	@Field(() => CarBrand) brand: CarBrand;
 	@Field(() => [String]) models: string[];
 }
+
+/** one value of a field and how many cars for sale have it, e.g. { value: "KIA", count: 7 } */
+@ObjectType()
+export class CarStatCount {
+	@Field(() => String) value: string;
+	@Field(() => Int) count: number;
+}
+
+/** counts of the cars for sale (ACTIVE) for the welcome page. Only values that have cars are listed */
+@ObjectType()
+export class CarStats {
+	@Field(() => Int) total: number;
+	/** dealers with at least one car for sale */
+	@Field(() => Int) dealers: number;
+	@Field(() => [CarStatCount]) brands: CarStatCount[];
+	@Field(() => [CarStatCount]) types: CarStatCount[];
+	@Field(() => [CarStatCount]) fuels: CarStatCount[];
+	@Field(() => [CarStatCount]) locations: CarStatCount[];
+}

@@ -265,6 +265,7 @@ This is also how an **agent created by an admin** sets their first password (§1
 | Operation                               | Who                    | Purpose                                                        |
 | --------------------------------------- | ---------------------- | -------------------------------------------------------------- |
 | `getCarCatalog`                         | public                 | brand → model list for the "Add car" form and the model filter |
+| `getCarStats`                           | public                 | welcome page numbers: cars for sale (`total`), `dealers`, and counts per `brands` / `types` / `fuels` / `locations` (`{ value, count }`, most first). Cached in Redis for 60 s and cleared whenever a car changes |
 | `getCars(input: CarsInquiry)`           | public                 | search ACTIVE cars (cursor pagination)                         |
 | `getCar(carId)`                         | public                 | car detail                                                     |
 | `getFavorites(input: { page, limit })`  | logged in              | cars I liked                                                   |

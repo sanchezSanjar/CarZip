@@ -2,7 +2,7 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Types } from 'mongoose';
 import { CarService } from './car.service';
-import { Car, CarCatalogBrand, Cars, CarsPage } from '../../libs/dto/car/car';
+import { Car, CarCatalogBrand, Cars, CarsPage, CarStats } from '../../libs/dto/car/car';
 import { CAR_MODELS } from '@app/common/config/car-catalog';
 import { CarBrand } from '@app/common/enums/car.enum';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
@@ -122,6 +122,12 @@ export class CarResolver {
 	@Mutation(() => Car)
 	public async likeTargetCar(@Args('carId') carId: string, @AuthMember('_id') memberId: Types.ObjectId): Promise<Car> {
 		return this.carService.likeTargetCar(memberId, shapeIntoMongoObjectId(carId));
+	}
+
+	// Public: the welcome page numbers (cars for sale per brand, type, fuel, region), cached in Redis
+	@Query(() => CarStats)
+	public async getCarStats(): Promise<CarStats> {
+		return this.carService.getCarStats();
 	}
 
 	// Public: brand -> models for the "Add car" form and the model filter (createCar accepts only these models;

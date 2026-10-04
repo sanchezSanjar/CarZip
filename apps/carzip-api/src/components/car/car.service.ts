@@ -7,8 +7,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Error as MongooseError, Model, Types } from 'mongoose';
-import { AgentPublic, Car, Cars, CarsPage } from '../../libs/dto/car/car';
+import { Error as MongooseError, Model, PipelineStage, Types } from 'mongoose';
+import { AgentPublic, Car, Cars, CarsPage, CarStatCount, CarStats } from '../../libs/dto/car/car';
 import { AgentCarsInquiry, AllCarsInquiry, CarInput, CarsInquiry, OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { CarUpdate, CarUpdateByAdmin } from '../../libs/dto/car/car.update';
 import { plainToInstance } from 'class-transformer';
@@ -32,6 +32,7 @@ import { AuthMemberData } from '../../libs/types/auth';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { buildCarsPipeline, lookupAgentData, toPage } from '../../libs/utils/car-query';
 import { PUBLIC_MEMBER_FIELDS } from '../../libs/utils/lookup';
+import { RedisService } from '@app/common/redis/redis.service';
 
 // what a car page shows about its agent (= AgentPublic). Verification data is never selected.
 const AGENT_PUBLIC_FIELDS = PUBLIC_MEMBER_FIELDS.join(' ');
@@ -43,6 +44,17 @@ const CAR_GONE_REASONS: Record<string, string> = {
 	[CarStatus.HOLD]: 'The dealer paused this listing.',
 };
 const SELLER_GONE_REASON = 'The dealer is no longer available on CarZip.';
+
+// getCarStats is cached in Redis: every car change below clears it, and it expires anyway after a minute
+const CAR_STATS_KEY = 'cache:carStats';
+const CAR_STATS_TTL = 60; // seconds
+
+/** $facet branch: how many ACTIVE cars have each value of a field, most first */
+const countBy = (field: string): PipelineStage.FacetPipelineStage[] => [
+	{ $group: { _id: `$${field}`, count: { $sum: 1 } } },
+	{ $sort: { count: -1, _id: 1 } },
+	{ $project: { _id: 0, value: '$_id', count: 1 } },
+];
 
 /** what the dealer is told when an admin changes their car */
 const MODERATION_TITLES: Record<string, (title: string) => string> = {
@@ -65,6 +77,7 @@ export class CarService {
 		@InjectModel('Block') private readonly blockModel: Model<{ blockerId: unknown; blockedId: unknown }>,
 		private readonly testDriveService: TestDriveService,
 		private readonly commentService: CommentService,
+		private readonly redis: RedisService,
 	) {}
 
 	/**
@@ -102,6 +115,7 @@ export class CarService {
 		}
 
 		await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: 1 } }).exec();
+		await this.redis.invalidate(CAR_STATS_KEY);
 		return created;
 	}
 
@@ -179,6 +193,7 @@ export class CarService {
 		if (newStatus && newStatus !== CarStatus.ACTIVE) {
 			await this.testDriveService.cancelForCar(carId, CAR_GONE_REASONS[newStatus], memberId);
 		}
+		await this.redis.invalidate(CAR_STATS_KEY);
 		return updated;
 	}
 
@@ -308,6 +323,45 @@ export class CarService {
 	}
 
 	/**
+	 * Welcome page numbers: how many cars are for sale, by how many dealers, per brand, body type, fuel and region.
+	 * Counted by the database in one query instead of sending every car to the browser, and cached in Redis.
+	 */
+	public async getCarStats(): Promise<CarStats> {
+		return this.redis.getOrSet(CAR_STATS_KEY, CAR_STATS_TTL, async () => {
+			const [facets] = await this.carModel
+				.aggregate<{
+					total: { n: number }[];
+					dealers: { n: number }[];
+					brands: CarStatCount[];
+					types: CarStatCount[];
+					fuels: CarStatCount[];
+					locations: CarStatCount[];
+				}>([
+					{ $match: { carStatus: CarStatus.ACTIVE } },
+					{
+						$facet: {
+							total: [{ $count: 'n' }],
+							dealers: [{ $group: { _id: '$memberId' } }, { $count: 'n' }],
+							brands: countBy('carBrand'),
+							types: countBy('carType'),
+							fuels: countBy('carFuelType'),
+							locations: countBy('carLocation'),
+						},
+					},
+				])
+				.exec();
+			return {
+				total: facets.total[0]?.n ?? 0,
+				dealers: facets.dealers[0]?.n ?? 0,
+				brands: facets.brands,
+				types: facets.types,
+				fuels: facets.fuels,
+				locations: facets.locations,
+			};
+		});
+	}
+
+	/**
 	 * "My cars" dashboard: only the logged-in agent's cars (memberId from the JWT), ACTIVE + HOLD + SOLD
 	 * or one of them. DELETE is never listed. Page numbers + total, for tabs like "Paused (3)".
 	 */
@@ -417,6 +471,7 @@ export class CarService {
 				input.carStatus === CarStatus.HOLD ? 'The listing was put on hold by CarZip.' : CAR_GONE_REASONS.DELETE;
 			await this.testDriveService.cancelForCar(carId, reason, adminId);
 		}
+		await this.redis.invalidate(CAR_STATS_KEY);
 		return updated;
 	}
 
@@ -458,6 +513,7 @@ export class CarService {
 			.updateMany({ memberId, carStatus: CarStatus.ACTIVE }, { $set: { carStatus: CarStatus.HOLD } })
 			.exec();
 		await this.testDriveService.cancelForSeller(memberId, SELLER_GONE_REASON, adminId);
+		if (result.modifiedCount) await this.redis.invalidate(CAR_STATS_KEY);
 		return result.modifiedCount;
 	}
 
@@ -476,6 +532,7 @@ export class CarService {
 			await this.memberModel.updateOne({ _id: memberId }, { $inc: { memberCars: -result.modifiedCount } }).exec();
 		}
 		await this.testDriveService.cancelForSeller(memberId, SELLER_GONE_REASON, adminId);
+		if (result.modifiedCount) await this.redis.invalidate(CAR_STATS_KEY);
 		return result.modifiedCount;
 	}
 }
