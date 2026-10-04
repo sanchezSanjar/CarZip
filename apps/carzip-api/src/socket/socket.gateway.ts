@@ -60,7 +60,7 @@ interface ChatClient {
 }
 
 const MESSAGE_MAX_LENGTH = 500;
-const MESSAGE_HISTORY = 5; // how many recent messages a newcomer receives
+const MESSAGE_HISTORY = 20; // how many recent messages a newcomer receives
 const RATE_LIMIT_COUNT = 5; // at most 5 messages ...
 const RATE_LIMIT_WINDOW = 5_000; // ... per 5 seconds per connection
 
