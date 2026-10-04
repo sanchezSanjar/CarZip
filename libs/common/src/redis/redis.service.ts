@@ -70,10 +70,11 @@ export class RedisService implements OnModuleDestroy {
 			if (name === 'client') this.logger.log(this.down ? 'Redis is back' : 'Redis is connected');
 			this.down = false;
 		});
-		redis.on('error', (err: Error) => {
+		redis.on('error', (err: NodeJS.ErrnoException) => {
 			if (this.down || name !== 'client') return;
 			this.down = true;
-			this.logger.warn(`Redis unavailable, retrying in the background: ${err.message}`);
+			// a refused connection has no message, only a code (ECONNREFUSED)
+			this.logger.warn(`Redis unavailable, retrying in the background: ${err.message || err.code}`);
 		});
 		return redis;
 	}
