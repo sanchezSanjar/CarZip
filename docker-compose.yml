@@ -1,0 +1,49 @@
+# CarZip backend on one server: API + batch server + Redis. MongoDB is Atlas (outside Docker).
+#   docker compose up -d --build    start, or update after git pull
+#   docker compose ps               status
+#   docker compose logs -f api      logs
+# Settings come from .env next to this file (never committed).
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: '3' } # logs can't fill the disk
+
+services:
+  api:
+    build: .
+    image: carzip-backend
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul # log times in Korea time, like the batch schedule
+      PORT_API: 3007
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '127.0.0.1:3007:3007' # only nginx on this server reaches the API
+    volumes:
+      - ./uploads:/app/uploads # photos stay on the server when the containers are rebuilt
+    depends_on: [redis]
+    restart: unless-stopped
+    logging: *logging
+
+  batch:
+    image: carzip-backend # the same image, started as the batch server
+    pull_policy: never
+    command: ['node', 'dist/apps/carzip-batch/main.js']
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      PORT_BATCH: 3008
+    volumes:
+      - ./uploads:/app/uploads # the batch server deletes unused photos from the same folder
+    depends_on: [api]
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    # cache and the last chat messages only: nothing to save to disk, at most 100 MB
+    command: ['redis-server', '--save', '', '--appendonly', 'no', '--maxmemory', '100mb', '--maxmemory-policy', 'allkeys-lru']
+    restart: unless-stopped
+    logging: *logging
