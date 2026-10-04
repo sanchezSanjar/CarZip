@@ -5,9 +5,7 @@ import { TestDriveBatchService } from './test-drive.batch';
 import { UploadBatchService } from './upload.batch';
 import { ReminderBatchService } from './reminder.batch';
 import { CounterBatchService } from './counter.batch';
-import { ChatBatchService } from './chat.batch';
 import {
-	BATCH_CHAT_CLEANUP,
 	BATCH_PENDING_AGENTS,
 	BATCH_RECOUNT,
 	BATCH_ROLLBACK,
@@ -26,7 +24,7 @@ import {
  * Rankings: every night at 01:00 (Korea time), one after another (rollback :00, cars :20, agents :40),
  * so the rankings are reset before they are recalculated.
  * Test drives: every 10 minutes (expire, remind) and every hour (follow up).
- * Unused uploaded images 03:00, old chat messages 03:30, counter check 04:00, admin reminder 09:00, stale listings 10:00 (Korea time).
+ * Unused uploaded images 03:00, counter check 04:00, admin reminder 09:00, stale listings 10:00 (Korea time).
  * A failing job is logged and never stops the others.
  */
 @Controller()
@@ -41,7 +39,6 @@ export class BatchController {
 		private readonly uploadBatchService: UploadBatchService,
 		private readonly reminderBatchService: ReminderBatchService,
 		private readonly counterBatchService: CounterBatchService,
-		private readonly chatBatchService: ChatBatchService,
 	) {}
 
 	@Timeout(1000)
@@ -86,12 +83,6 @@ export class BatchController {
 	@Cron('00 00 03 * * *', { name: BATCH_UPLOAD_CLEANUP, timeZone: BATCH_TIMEZONE })
 	public async uploadCleanup(): Promise<void> {
 		await this.run(BATCH_UPLOAD_CLEANUP, () => this.uploadBatchService.removeUnused());
-	}
-
-	// every night at 03:30: chat messages older than 30 days are deleted (the newest 15 always stay)
-	@Cron('00 30 03 * * *', { name: BATCH_CHAT_CLEANUP, timeZone: BATCH_TIMEZONE })
-	public async chatCleanup(): Promise<void> {
-		await this.run(BATCH_CHAT_CLEANUP, () => this.chatBatchService.removeOld());
 	}
 
 	// every night at 04:00: counters (likes, comments, views, followers, cars, articles) checked against the records

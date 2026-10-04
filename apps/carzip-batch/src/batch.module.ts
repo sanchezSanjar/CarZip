@@ -19,8 +19,6 @@ import CommentSchema from '@app/common/schemas/Comment.model';
 import ViewSchema from '@app/common/schemas/View.model';
 import FollowSchema from '@app/common/schemas/Follow.model';
 import BlockSchema from '@app/common/schemas/Block.model';
-import ChatMessageSchema from '@app/common/schemas/ChatMessage.model';
-import { ChatBatchService } from './chat.batch';
 
 @Module({
 	imports: [
@@ -38,17 +36,9 @@ import { ChatBatchService } from './chat.batch';
 			{ name: 'View', schema: ViewSchema },
 			{ name: 'Follow', schema: FollowSchema },
 			{ name: 'Block', schema: BlockSchema },
-			{ name: 'ChatMessage', schema: ChatMessageSchema },
 		]),
 	],
 	controllers: [BatchController],
-	providers: [
-		BatchService,
-		TestDriveBatchService,
-		UploadBatchService,
-		ReminderBatchService,
-		CounterBatchService,
-		ChatBatchService,
-	],
+	providers: [BatchService, TestDriveBatchService, UploadBatchService, ReminderBatchService, CounterBatchService],
 })
 export class BatchModule {}
