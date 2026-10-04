@@ -8,6 +8,7 @@ import { unwrapResolverError } from '@apollo/server/errors';
 import { GraphQLError, GraphQLFormattedError } from 'graphql';
 import { ComponentsModule } from './components/components.module';
 import { DatabaseModule } from '@app/common/database/database.module';
+import { RedisModule } from '@app/common/redis/redis.module';
 import { SocketModule } from './socket/socket.module';
 import { Message } from '@app/common/enums/common.enum';
 
@@ -64,6 +65,7 @@ const logger = new Logger('GraphQLError');
 		}),
 		ComponentsModule,
 		DatabaseModule,
+		RedisModule, // cache and live chat (works without Redis too)
 		SocketModule, // WebSocket (real-time)
 	],
 	controllers: [AppController],

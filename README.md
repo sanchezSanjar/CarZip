@@ -99,6 +99,9 @@ PORT_BATCH=3008
 MONGO_DEV=mongodb://localhost:27017/carzip
 MONGO_PROD=
 
+# Redis: cache and live chat (optional: without it there is no cache and the chat history stays in memory)
+REDIS_URL=redis://localhost:6379
+
 SECRET_TOKEN=a-long-random-string
 
 # optional: without them, SMS messages are only written to the log (nothing is sent)

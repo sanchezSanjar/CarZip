@@ -43,6 +43,7 @@
     "cross-env": "^10.1.0",
     "graphql": "^16.11.0",
     "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
     "moment": "^2.29.4",
     "mongoose": "^8.0.0",
     "reflect-metadata": "^0.2.0",
