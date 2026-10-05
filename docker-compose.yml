@@ -23,6 +23,7 @@ services:
     volumes:
       - ./uploads:/app/uploads # photos stay on the server when the containers are rebuilt
     depends_on: [redis]
+    init: true # Node as process 1 ignores SIGTERM: without this, every stop waits 10 s and then kills it
     restart: unless-stopped
     logging: *logging
 
@@ -38,6 +39,7 @@ services:
     volumes:
       - ./uploads:/app/uploads # the batch server deletes unused photos from the same folder
     depends_on: [api]
+    init: true
     restart: unless-stopped
     logging: *logging
 
