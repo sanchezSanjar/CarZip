@@ -37,11 +37,11 @@ function setup({
 		comparePassword: vi.fn().mockResolvedValue(passwordOk),
 		createToken: vi.fn().mockResolvedValue('new-token'),
 	};
-	const service = Object.assign(Object.create(MemberService.prototype) as MemberService, {
+	const service = Object.assign(Object.create(MemberService.prototype), {
 		loginAttemptModel,
 		memberModel,
 		authService,
-	});
+	}) as MemberService;
 	return { service, loginAttemptModel, authService };
 }
 

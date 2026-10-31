@@ -28,12 +28,12 @@ function setup(memberType: MemberType, { listedCars = 0, openTestDrives = 0 } = 
 	};
 	const carService = { countListedCars: vi.fn().mockResolvedValue(listedCars) };
 	const testDriveService = { countOpen: vi.fn().mockResolvedValue(openTestDrives) };
-	const service = Object.assign(Object.create(MemberService.prototype) as MemberService, {
+	const service = Object.assign(Object.create(MemberService.prototype), {
 		memberModel,
 		carService,
 		testDriveService,
 		notificationService: { notify: vi.fn() },
-	});
+	}) as MemberService;
 	const change = (to: MemberType) => service.updateMemberByAdmin(admin, { _id: String(target._id), memberType: to });
 	return { change, memberModel, testDriveService, target };
 }

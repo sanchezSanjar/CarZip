@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { RedisService } from './redis.service';
 
 /** a fake Redis client: a Map instead of a server */
@@ -19,7 +19,7 @@ const serviceWith = (client: ReturnType<typeof fakeClient> | null) => {
 
 describe('RedisService.getOrSet: cache first, the database only when needed', () => {
 	let store: Map<string, string>;
-	let load: ReturnType<typeof vi.fn>;
+	let load: Mock<() => Promise<{ total: number }>>;
 
 	beforeEach(() => {
 		store = new Map();
