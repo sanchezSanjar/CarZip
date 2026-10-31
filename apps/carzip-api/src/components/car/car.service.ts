@@ -264,17 +264,22 @@ export class CarService {
 	}
 
 	/**
-	 * Like / un-like a car (toggle), Search & Engage flowchart: ACTIVE cars only, the dealer's PERSONAL
+	 * Like / un-like a car (toggle), Search & Engage flowchart: ACTIVE cars (SOLD: un-like only), the dealer's PERSONAL
 	 * block stops the blocked member, carLikes follows the real likes, and the dealer gets ONE
 	 * LIKE notification per liker. Dealers can't like their own cars.
 	 */
 	public async likeTargetCar(memberId: Types.ObjectId, carId: Types.ObjectId): Promise<Car> {
 		const car = await this.carModel
-			.findOne({ _id: carId, carStatus: CarStatus.ACTIVE })
-			.select('memberId carTitle')
+			.findOne({ _id: carId, carStatus: { $in: [CarStatus.ACTIVE, CarStatus.SOLD] } })
+			.select('memberId carTitle carStatus')
 			.lean<Car>()
 			.exec();
 		if (!car) throw new NotFoundException(Message.NO_DATA_FOUND);
+		// a SOLD car stays in "My favorites": it can be un-liked there, but not liked any more
+		if (car.carStatus === CarStatus.SOLD) {
+			const liked = await this.likeService.checkLikeExistence({ memberId, likeRefId: carId, likeGroup: LikeGroup.CAR });
+			if (!liked.length) throw new NotFoundException(Message.NO_DATA_FOUND);
+		}
 		const ownerId = new Types.ObjectId(String(car.memberId));
 		if (ownerId.equals(memberId)) throw new BadRequestException(Message.OWN_CONTENT_LIKE_DENIED);
 		if (await this.blockModel.exists({ blockerId: ownerId, blockedId: memberId }).exec()) {

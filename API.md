@@ -270,7 +270,7 @@ This is also how an **agent created by an admin** sets their first password (§1
 | `getCar(carId)`                         | public                 | car detail                                                     |
 | `getFavorites(input: { page, limit })`  | logged in              | cars I liked                                                   |
 | `getVisited(input: { page, limit })`    | logged in              | cars I opened, latest visit first                              |
-| `likeTargetCar(carId)`                  | logged in              | like / un-like (toggle)                                        |
+| `likeTargetCar(carId)`                  | logged in              | like / un-like (toggle); a SOLD car can only be un-liked       |
 | `createCar(input: CarInput)`            | AGENT                  | new listing                                                    |
 | `updateCar(input: CarUpdate)`           | AGENT (own cars)       | edit, pause, re-activate, sell, delete                         |
 | `confirmCarListing(carId)`              | AGENT (own ACTIVE car) | "still for sale", without editing                              |
