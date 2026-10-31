@@ -42,6 +42,7 @@ import { NotificationGroup, NotificationType } from '@app/common/enums/notificat
 import { ViewGroup } from '@app/common/enums/view.enum';
 import { UploadService } from '../upload/upload.service';
 import { UploadTarget } from '@app/common/enums/upload.enum';
+import { SmsService } from '../sms/sms.service';
 
 // login limit: failed attempts counted over 15 minutes, per account and per IP (many accounts tried from one place)
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -107,7 +108,26 @@ export class MemberService {
 		@InjectModel('Follow') private readonly followModel: Model<{ followingId: unknown; followerId: unknown }>,
 		private readonly testDriveService: TestDriveService,
 		private readonly uploadService: UploadService,
+		private readonly smsService: SmsService,
 	) {}
+
+	/**
+	 * A new dealer is waiting for approval: every ACTIVE admin also gets an SMS (each SMS costs money).
+	 * Runs in the background: a slow or failed SMS never delays or breaks the signup (SmsService logs failures).
+	 */
+	private smsAdminsAboutApplication(member: Member): void {
+		const company = member.agentCompany ? ` (${member.agentCompany})` : '';
+		const text = `[CarZip] New dealer application: ${member.memberNick}${company}. Please review it in the admin panel.`;
+		this.memberModel
+			.find({ memberType: MemberType.ADMIN, memberStatus: MemberStatus.ACTIVE })
+			.select('memberPhone')
+			.lean<{ memberPhone: string }[]>()
+			.exec()
+			.then((admins) =>
+				Promise.all(admins.map((admin) => this.smsService.sendSms(admin.memberPhone, text).catch(() => undefined))),
+			)
+			.catch((err: Error) => this.logger.error(`dealer application SMS failed: ${err.message}`));
+	}
 
 	/**
 	 * Profile photos and business cards must be images our upload API produced (target member):
@@ -160,6 +180,7 @@ export class MemberService {
 					notificationDesc: `${member.memberNick} (${member.agentCompany}) is waiting for review.`,
 					authorId: shapeIntoMongoObjectId(member._id),
 				});
+				this.smsAdminsAboutApplication(member);
 			}
 			return member;
 		} catch (err: any) {
