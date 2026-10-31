@@ -205,7 +205,7 @@ mutation {
 | `contactTelegram`, `contactKakao` | 2–50 chars; agents only                                        |
 
 - **USER:** gets `memberStatus: ACTIVE` and an `accessToken`.
-- **AGENT:** gets `memberStatus: PENDING` and **no token**. Show "under review, usually within 24 hours".
+- **AGENT:** gets `memberStatus: PENDING` and **no token**. Show "under review, usually within 24 hours". Every active admin gets an in-app notification and an SMS about the new application.
 
 **Public vs private profile fields.** Everyone sees the public fields. Only the member themself and admins also see `memberPhone`, `memberFullName`, `memberWarnings`, `memberBlocks`, `agentBusinessNo`, `agentBusinessCard`, `agentRejectReason` and `deletedAt`; for anyone else these come back `null`.
 
