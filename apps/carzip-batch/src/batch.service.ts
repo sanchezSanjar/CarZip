@@ -26,10 +26,26 @@ export class BatchService {
 		@InjectModel('Member') private readonly memberModel: Model<MemberDoc>,
 	) {}
 
-	/** reset every rank, including cars/agents that are no longer ACTIVE (otherwise their old rank stays forever) */
+	/**
+	 * Reset the rank of cars / agents that are no longer ACTIVE (otherwise their old rank stays forever).
+	 * ACTIVE ones keep theirs until the next jobs overwrite it: zeroing them too would leave the
+	 * "top cars / top dealers" lists empty or shuffled for the seconds between the jobs.
+	 */
 	public async batchRollback(): Promise<void> {
-		await this.carModel.updateMany({ carRank: { $ne: 0 } }, { $set: { carRank: 0 } }, NO_TIMESTAMPS).exec();
-		await this.memberModel.updateMany({ memberRank: { $ne: 0 } }, { $set: { memberRank: 0 } }, NO_TIMESTAMPS).exec();
+		await this.carModel
+			.updateMany(
+				{ carStatus: { $ne: CarStatus.ACTIVE }, carRank: { $ne: 0 } },
+				{ $set: { carRank: 0 } },
+				NO_TIMESTAMPS,
+			)
+			.exec();
+		await this.memberModel
+			.updateMany(
+				{ $nor: [{ memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE }], memberRank: { $ne: 0 } },
+				{ $set: { memberRank: 0 } },
+				NO_TIMESTAMPS,
+			)
+			.exec();
 	}
 
 	/** carRank = likes * 2 + views (only cars on sale) */
