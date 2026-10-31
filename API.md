@@ -412,7 +412,7 @@ Statuses: `REQUEST` → `CONFIRM` / `REJECT` / `CANCEL`; `CONFIRM` → `COMPLETE
 - Not allowed on your own car, or if the dealer blocked you.
 - `testDriveDate` must be in the future, within **60 days**.
 - `testDriveMessage` is at most 300 characters.
-- One open test drive per car; at most **10** open requests per buyer.
+- One open test drive per car; at most **10** open test drives (requested or confirmed) per buyer.
 
 **Who can change what:**
 

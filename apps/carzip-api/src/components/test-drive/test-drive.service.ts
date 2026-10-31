@@ -16,7 +16,7 @@ import { NotificationService } from '../notification/notification.service';
 
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_DAYS_AHEAD = 60; // a request further away is almost surely a typo
-const MAX_OPEN_PER_BUYER = 10; // one buyer can't flood dealers with requests
+const MAX_OPEN_PER_BUYER = 10; // one buyer can't flood dealers with requests (requested + confirmed)
 /** still waiting for the meeting: these block a new request and are cancelled when the car leaves the market */
 const OPEN_STATUSES = [TestDriveStatus.REQUEST, TestDriveStatus.CONFIRM];
 
@@ -75,7 +75,7 @@ export class TestDriveService {
 
 		const [openForCar, openTotal] = await Promise.all([
 			this.testDriveModel.exists({ carId, memberId, testDriveStatus: { $in: OPEN_STATUSES } }).exec(),
-			this.testDriveModel.countDocuments({ memberId, testDriveStatus: TestDriveStatus.REQUEST }).exec(),
+			this.testDriveModel.countDocuments({ memberId, testDriveStatus: { $in: OPEN_STATUSES } }).exec(),
 		]);
 		if (openForCar) throw new BadRequestException(Message.TEST_DRIVE_ALREADY_OPEN);
 		if (openTotal >= MAX_OPEN_PER_BUYER) throw new BadRequestException(Message.TEST_DRIVE_TOO_MANY_OPEN);
