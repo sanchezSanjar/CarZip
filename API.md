@@ -160,7 +160,7 @@ REST endpoints (upload) return Nest's standard JSON error: `{ "statusCode": 400,
 | ----------------------------------- | --------- | ---------------------------------------------------------------------------- |
 | `signup(input: MemberInput)`        | public    | create a USER or AGENT (phone must be SMS-verified first, see §6)            |
 | `login(input: LoginInput)`          | public    | see §2                                                                       |
-| `getMember(targetId)`               | public    | a profile                                                                    |
+| `getMember(targetId, countView)`    | public    | a profile; `countView: false` reads it without counting a profile view       |
 | `getAgents(input: AgentsInquiry)`   | public    | list of ACTIVE agents                                                        |
 | `updateMember(input: MemberUpdate)` | logged in | edit own profile; returns a new token                                        |
 | `changePassword(input)`             | logged in | `oldPassword`, `newPassword`; returns a new token, other sessions logged out |

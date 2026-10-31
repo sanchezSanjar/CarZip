@@ -309,7 +309,7 @@ export class MemberService {
 	 * Public profile. Guests and other members see ACTIVE members only, without private fields.
 	 * The member themself and admins see everything (admins also non-ACTIVE members).
 	 */
-	public async getMember(targetId: Types.ObjectId, viewer: AuthMemberData | null): Promise<Member> {
+	public async getMember(targetId: Types.ObjectId, viewer: AuthMemberData | null, countView = true): Promise<Member> {
 		const isAdmin = viewer?.memberType === MemberType.ADMIN;
 		const isSelf = !!viewer?._id.equals(targetId);
 		const filter = isAdmin || isSelf ? { _id: targetId } : { _id: targetId, memberStatus: MemberStatus.ACTIVE };
@@ -318,7 +318,7 @@ export class MemberService {
 		if (!member) throw new NotFoundException(Message.NO_DATA_FOUND);
 
 		// count a profile visit: logged-in viewers only, once per viewer, never your own profile
-		if (viewer && !isSelf && member.memberStatus === MemberStatus.ACTIVE) {
+		if (countView && viewer && !isSelf && member.memberStatus === MemberStatus.ACTIVE) {
 			const isNewView = await this.viewService.recordView({
 				memberId: viewer._id,
 				viewRefId: targetId,

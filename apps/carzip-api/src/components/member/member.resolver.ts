@@ -73,8 +73,10 @@ export class MemberResolver {
 	public async getMember(
 		@Args('targetId') targetId: string, // the profile being viewed (memberId elsewhere = the logged-in member)
 		@AuthMember() authMember: AuthMemberData | null,
+		// false: the profile is only read (car page, follow button), not visited, so no view is counted
+		@Args('countView', { type: () => Boolean, nullable: true, defaultValue: true }) countView: boolean,
 	): Promise<Member> {
-		return this.memberService.getMember(shapeIntoMongoObjectId(targetId), authMember);
+		return this.memberService.getMember(shapeIntoMongoObjectId(targetId), authMember, countView);
 	}
 
 	// like / un-like a member's profile (toggle)
