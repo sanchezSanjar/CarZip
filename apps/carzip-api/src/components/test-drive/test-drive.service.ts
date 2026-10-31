@@ -201,6 +201,11 @@ export class TestDriveService {
 		return this.cancelOpen({ memberId, sellerId }, reason, sellerId, 'buyer');
 	}
 
+	/** how many open test drives a member has, as the buyer (memberId) or as the dealer (sellerId) */
+	public async countOpen(match: { memberId: Types.ObjectId } | { sellerId: Types.ObjectId }): Promise<number> {
+		return this.testDriveModel.countDocuments({ ...match, testDriveStatus: { $in: OPEN_STATUSES } }).exec();
+	}
+
 	/** the car is removed for good (removeCarByAdmin): its test-drive history goes with it */
 	public async removeForCar(carId: Types.ObjectId): Promise<number> {
 		return (await this.testDriveModel.deleteMany({ carId }).exec()).deletedCount;

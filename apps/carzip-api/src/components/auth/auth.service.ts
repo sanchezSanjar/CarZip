@@ -76,6 +76,11 @@ export class AuthService {
 			throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
 		}
 
+		// an admin changed the role (USER <-> AGENT) after this token was issued: log in again for a token with the new role
+		if (payload.memberType && payload.memberType !== member.memberType) {
+			throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
+		}
+
 		const { _id, memberNick, memberType, memberStatus } = member;
 		return { _id, memberNick, memberType, memberStatus };
 	}

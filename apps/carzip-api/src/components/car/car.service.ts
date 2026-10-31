@@ -508,6 +508,11 @@ export class CarService {
 		return removed;
 	}
 
+	/** how many of the agent's cars are still listed (ACTIVE or HOLD) */
+	public async countListedCars(memberId: Types.ObjectId): Promise<number> {
+		return this.carModel.countDocuments({ memberId, carStatus: { $in: [CarStatus.ACTIVE, CarStatus.HOLD] } }).exec();
+	}
+
 	/**
 	 * Admin blocked the agent: hide their ACTIVE cars from search. HOLD keeps memberCars unchanged
 	 * (Car Listing flowchart). After an unblock the agent re-activates the cars they still want to sell.

@@ -468,7 +468,18 @@ export class MemberService {
 		const $set: Record<string, unknown> = {};
 		const $unset: Record<string, ''> = {};
 		const finalType = input.memberType ?? target.memberType;
-		if (input.memberType) $set.memberType = input.memberType;
+		if (input.memberType && input.memberType !== target.memberType) {
+			// a USER <-> AGENT switch must not leave cars on sale by a buyer, or test drives nobody can manage
+			// (who may move a test drive depends on the role): those have to be finished first
+			const [listedCars, openTestDrives] = await Promise.all([
+				this.carService.countListedCars(targetId),
+				this.testDriveService.countOpen(
+					target.memberType === MemberType.AGENT ? { sellerId: targetId } : { memberId: targetId },
+				),
+			]);
+			if (listedCars || openTestDrives) throw new BadRequestException(Message.MEMBER_TYPE_CHANGE_DENIED);
+			$set.memberType = input.memberType;
+		}
 
 		switch (input.memberStatus) {
 			case MemberStatus.ACTIVE:
