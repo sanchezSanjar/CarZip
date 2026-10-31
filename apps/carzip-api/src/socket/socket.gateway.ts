@@ -62,6 +62,7 @@ interface ChatClient {
 
 const MESSAGE_MAX_LENGTH = 500;
 const MESSAGE_HISTORY = 20; // how many recent messages a newcomer receives
+const MESSAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // older messages are deleted and never shown again (7 days)
 const RATE_LIMIT_COUNT = 5; // at most 5 messages ...
 const RATE_LIMIT_WINDOW = 5_000; // ... per 5 seconds per connection
 
@@ -86,6 +87,7 @@ const CLOSE_FORBIDDEN = 4003; // blocked member
  * With Redis, the last messages live in a Redis list and new messages go out through Redis pub/sub,
  * so several API servers share one chat. Without Redis, both stay inside this server's memory.
  * Messages are never written to the database: after a restart of Redis (or of the API, without Redis) they're gone.
+ * Messages older than 7 days are deleted and never sent again.
  * The online count (totalClients) is per server.
  */
 @WebSocketGateway({
@@ -197,12 +199,23 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 		await this.publish(message);
 	}
 
-	/** the last MESSAGE_HISTORY messages, oldest first: from Redis, or from memory while Redis is not available */
+	/**
+	 * The last MESSAGE_HISTORY messages, oldest first: from Redis, or from memory while Redis is not available.
+	 * Messages older than MESSAGE_MAX_AGE are deleted here, so an old chat never comes back.
+	 */
 	private async recentMessages(): Promise<MessagePayload[]> {
+		const isFresh = (message: MessagePayload) => Date.now() - Date.parse(message.createdAt) < MESSAGE_MAX_AGE;
+		while (this.messageList.length && !isFresh(this.messageList[0])) this.messageList.shift();
 		if (!this.redis.isReady) return [...this.messageList];
 		try {
 			const items = await this.redis.client!.lrange(HISTORY_KEY, 0, MESSAGE_HISTORY - 1);
-			return items.map((item) => JSON.parse(item) as MessagePayload).reverse();
+			// the list is newest first, so the old messages are all at its end
+			const fresh = items.map((item) => JSON.parse(item) as MessagePayload).filter(isFresh);
+			if (fresh.length < items.length) {
+				if (fresh.length) await this.redis.client!.ltrim(HISTORY_KEY, 0, fresh.length - 1);
+				else await this.redis.client!.del(HISTORY_KEY);
+			}
+			return fresh.reverse();
 		} catch (err) {
 			this.logger.warn(`chat history read failed: ${(err as Error).message}`);
 			return [...this.messageList];
@@ -221,6 +234,8 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 					.client!.multi()
 					.lpush(HISTORY_KEY, data)
 					.ltrim(HISTORY_KEY, 0, MESSAGE_HISTORY - 1)
+					// a chat nobody wrote in for 7 days disappears from Redis by itself
+					.pexpire(HISTORY_KEY, MESSAGE_MAX_AGE)
 					.publish(MESSAGE_CHANNEL, data)
 					.exec();
 				return; // our own subscriber delivers it to this server's clients
