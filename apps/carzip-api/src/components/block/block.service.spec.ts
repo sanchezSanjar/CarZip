@@ -23,8 +23,14 @@ function setup(follows: boolean) {
 	const followModel = {
 		findOneAndDelete: vi.fn(() => ({ lean: () => resolved(follows ? { _id: new Types.ObjectId() } : null) })),
 	};
-	const service = new BlockService(blockModel as never, memberModel as never, followModel as never);
-	return { service, memberModel, followModel, agentId, buyerId };
+	const testDriveService = { cancelBetween: vi.fn().mockResolvedValue(0) };
+	const service = new BlockService(
+		blockModel as never,
+		memberModel as never,
+		followModel as never,
+		testDriveService as never,
+	);
+	return { service, memberModel, followModel, testDriveService, agentId, buyerId };
 }
 
 describe('BlockService.blockMember', () => {
@@ -42,6 +48,12 @@ describe('BlockService.blockMember', () => {
 		const { service, memberModel, agentId, buyerId } = setup(false);
 		await service.blockMember(agentId, buyerId);
 		expect(memberModel.updateOne).toHaveBeenCalledTimes(1); // only memberBlocks +1
+	});
+
+	it("cancels the blocked member's open test drives with this agent", async () => {
+		const { service, testDriveService, agentId, buyerId } = setup(false);
+		await service.blockMember(agentId, buyerId);
+		expect(testDriveService.cancelBetween).toHaveBeenCalledWith(buyerId, agentId, expect.any(String));
 	});
 
 	it('refuses to block yourself', async () => {

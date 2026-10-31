@@ -196,6 +196,11 @@ export class TestDriveService {
 		return this.cancelOpen({ memberId }, reason, authorId, 'seller');
 	}
 
+	/** the dealer blocked this buyer (personal block): their open test drives with this dealer are cancelled */
+	public async cancelBetween(memberId: Types.ObjectId, sellerId: Types.ObjectId, reason: string): Promise<number> {
+		return this.cancelOpen({ memberId, sellerId }, reason, sellerId, 'buyer');
+	}
+
 	/** the car is removed for good (removeCarByAdmin): its test-drive history goes with it */
 	public async removeForCar(carId: Types.ObjectId): Promise<number> {
 		return (await this.testDriveModel.deleteMany({ carId }).exec()).deletedCount;

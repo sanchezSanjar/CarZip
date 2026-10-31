@@ -6,6 +6,7 @@ import { OrdinaryInquiry } from '../../libs/dto/car/car.input';
 import { Message } from '@app/common/enums/common.enum';
 import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { lookupPublicMember } from '../../libs/utils/lookup';
+import { TestDriveService } from '../test-drive/test-drive.service';
 
 type BlockDoc = { _id: Types.ObjectId; blockerId: Types.ObjectId; blockedId: Types.ObjectId; createdAt: Date };
 type FollowDoc = { _id: Types.ObjectId; followerId: Types.ObjectId; followingId: Types.ObjectId };
@@ -17,7 +18,8 @@ type MemberDoc = { _id: Types.ObjectId; memberType: MemberType; memberStatus: Me
  * browses and uses the rest of CarZip. Existing comments stay (only ADMIN deletes). Never site-wide: global
  * blocking is ADMIN only (memberStatus BLOCK). Nobody is notified: a block is the agent's private decision.
  * memberBlocks on the blocked member = how many agents blocked them (private: only they and admins see it).
- * Blocking also ends the blocked member's follow of the agent (they leave the agent's followers); unblocking doesn't restore it.
+ * Blocking also ends the blocked member's follow of the agent (they leave the agent's followers) and cancels their open
+ * test drives with the agent (the buyer is told the dealer is no longer available); unblocking doesn't restore either.
  */
 @Injectable()
 export class BlockService {
@@ -25,6 +27,7 @@ export class BlockService {
 		@InjectModel('Block') private readonly blockModel: Model<BlockDoc>,
 		@InjectModel('Member') private readonly memberModel: Model<MemberDoc>,
 		@InjectModel('Follow') private readonly followModel: Model<FollowDoc>,
+		private readonly testDriveService: TestDriveService,
 	) {}
 
 	public async blockMember(agentId: Types.ObjectId, targetId: Types.ObjectId): Promise<Block> {
@@ -53,6 +56,12 @@ export class BlockService {
 				this.memberModel.updateOne({ _id: agentId }, { $inc: { memberFollowers: -1 } }).exec(),
 			]);
 		}
+		// a blocked member can't request test drives here, so their open ones end too (a confirmed one showed their phone)
+		await this.testDriveService.cancelBetween(
+			targetId,
+			agentId,
+			'The dealer is no longer available for this test drive.',
+		);
 		return this.withProfile(created);
 	}
 

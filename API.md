@@ -489,7 +489,8 @@ Statuses: `REQUEST` → `CONFIRM` / `REJECT` / `CANCEL`; `CONFIRM` → `COMPLETE
 - **What a blocked member can't do:** like, comment, follow or request test drives on that agent's things. They can still browse everything and use the rest of CarZip.
 - **Blocking ends a follow:** if the blocked member followed the agent, that follow is removed (both counters go down). Unblocking doesn't restore it; they can follow again.
 - **Not allowed:** blocking yourself, an admin, or a deleted member. Blocking twice gives "You already blocked this member."
-- **No notification:** nobody is notified of a block.
+- **Blocking ends open test drives:** the blocked member's open test drives with this agent (requested or confirmed) are cancelled.
+- **No notification of the block:** nobody is told about the block itself; a cancelled test drive only says the dealer is no longer available.
 - **The button:** use `getMember(...).meBlocked` to show Block / Unblock.
 
 ---
