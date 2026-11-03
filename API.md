@@ -24,7 +24,8 @@ The exact types (every field, every enum value) are always available from the se
 14. [Notices, FAQ and terms](#14-notices-faq-and-terms)
 15. [Admin](#15-admin)
 16. [Live chat (WebSocket)](#16-live-chat-websocket)
-17. [Enums](#17-enums)
+17. [Private messages](#17-private-messages)
+18. [Enums](#18-enums)
 
 ---
 
@@ -673,7 +674,43 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 
 ---
 
-## 17. Enums
+## 17. Private messages
+
+Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger. Text for now; photos and voice messages come later. Everything needs a logged-in member.
+
+| Operation | Purpose |
+| --- | --- |
+| `startConversation(input: { targetId, carId? })` | opens the conversation with this member, or creates it. `carId`: one of the dealer's cars, shown as the conversation's car |
+| `getConversations(input: { page, limit })` | my conversations, latest message first: `partner` (the other side's public profile), `carData`, `lastMessageText`, `myUnread`, `partnerReadAt` |
+| `getMessages(input: { conversationId, before?, limit })` | the thread, **newest first**, 1–50 per page. Older page: `before` = `createdAt` of the oldest message shown |
+| `sendMessage(input: { conversationId, messageText, carId? })` | 1–1000 characters; returns the message |
+| `markConversationRead(conversationId)` | I opened the thread: `myUnread` becomes 0 and the other side sees it as read |
+| `getUnreadMessageCount` | the number for the Chat tab badge |
+
+**Who can write to whom:**
+
+- A **buyer** can start a conversation with any ACTIVE dealer.
+- A **dealer** can start one only with a buyer who requested a test drive on one of the dealer's cars (any status). After that, both sides reply freely.
+- Never buyer to buyer, dealer to dealer, or with an admin: `FORBIDDEN` "Private messages are between a buyer and a dealer."
+- A dealer's personal block (§12) stops the conversation both ways: `FORBIDDEN` "You cannot message this member."
+- A member who is no longer ACTIVE can't be written to.
+- At most **20 messages a minute** per member (`TOO_MANY_REQUESTS`).
+- Someone outside a conversation gets `NOT_FOUND` for it; nothing about it is revealed.
+
+**Kept 14 days:** each message is deleted 14 days after it was sent, and a conversation 14 days after its last message (the public room in §16 keeps 7 days). The text is never written to the server logs.
+
+**Live, over the same WebSocket as §16** (connected with a token): only the two members of the conversation receive
+
+| `event` | Payload | When |
+| --- | --- | --- |
+| `privateMessage` | `conversationId`, `message` (like `sendMessage` returns) | a new message, to both members (also the sender's other devices) |
+| `conversationRead` | `conversationId`, `readAt` | the other side opened the thread: messages sent before `readAt` are read |
+
+Read receipts: a message of mine is **read** when its `createdAt` ≤ the conversation's `partnerReadAt` (or the latest `conversationRead.readAt`).
+
+---
+
+## 18. Enums
 
 | Enum                                 | Values                                                                                                                                                                                                                                                                                     |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
