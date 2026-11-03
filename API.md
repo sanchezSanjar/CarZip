@@ -644,7 +644,10 @@ ws.onmessage = (e) => {
 	// msg.event: 'getMessages' | 'info' | 'message' | 'error'
 };
 ws.send(JSON.stringify({ event: 'message', data: 'Hello!' })); // logged-in members only
+ws.send(JSON.stringify({ event: 'auth', data: newAccessToken })); // after every refresh (mobile app)
 ```
+
+**New token on an open connection (`auth`):** every message re-checks the token, and the mobile app's access token lasts 15 minutes. After each `refreshTokens`, send `{ "event": "auth", "data": "<new accessToken>" }`: the connection keeps going with the new token, no reconnect. A guest connection becomes a member one the same way (after login). A bad or expired token closes the connection with `4001`.
 
 The token goes in the URL because browsers can't set headers on a WebSocket.
 

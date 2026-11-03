@@ -79,6 +79,7 @@ const CLOSE_FORBIDDEN = 4003; // blocked member
  * Connect:        ws://host:PORT_API?token=<accessToken>   (no token = guest)
  *                 Browsers can't set headers on a WebSocket, so the token travels in the URL.
  * Client sends:   { "event": "message", "data": "hello" }
+ *                 { "event": "auth", "data": "<accessToken>" } a refreshed token, without reconnecting
  * Server sends:   { "event": "getMessages", list } to a newcomer (latest messages),
  *                 { "event": "info", totalClients, memberData, action: "joined" | "left" } to everyone,
  *                 { "event": "message", text, memberData, createdAt } to everyone,
@@ -124,7 +125,9 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 		subscriber.on('message', (channel: string, data: string) => {
 			if (channel === MESSAGE_CHANNEL) this.emitData(data);
 		});
-		subscriber.subscribe(MESSAGE_CHANNEL).catch((err: Error) => this.logger.warn(`chat subscribe failed: ${err.message}`));
+		subscriber
+			.subscribe(MESSAGE_CHANNEL)
+			.catch((err: Error) => this.logger.warn(`chat subscribe failed: ${err.message}`));
 	}
 
 	public async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
@@ -167,6 +170,33 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 			.catch((err: unknown) => this.logger.error(`message failed: ${err instanceof Error ? err.message : err}`));
 		this.queues.set(client, next);
 		return next;
+	}
+
+	/**
+	 * { "event": "auth", "data": "<accessToken>" }: a new access token for this connection, without reconnecting.
+	 * The mobile app's tokens last 15 minutes and every message re-checks the token, so the app sends each
+	 * refreshed token here. A guest connection becomes a member one. A bad token closes the connection (4001).
+	 * Queued with the messages: a message sent right after it already uses the new token.
+	 */
+	@SubscribeMessage('auth')
+	public handleAuth(client: WebSocket, payload: unknown): Promise<void> {
+		const next = (this.queues.get(client) ?? Promise.resolve())
+			.then(() => this.processAuth(client, payload))
+			.catch((err: unknown) => this.logger.error(`auth failed: ${err instanceof Error ? err.message : err}`));
+		this.queues.set(client, next);
+		return next;
+	}
+
+	private async processAuth(client: WebSocket, payload: unknown): Promise<void> {
+		const chatClient = this.clients.get(client) ?? (await this.pending.get(client));
+		if (!chatClient) return; // refused connection
+		const token = typeof payload === 'string' ? payload.trim() : '';
+		if (!token) return this.sendTo(client, { event: 'error', message: 'Send the new access token.' });
+
+		const member = await this.loadMember(client, token); // closes the connection when the token is bad
+		if (!member) return;
+		chatClient.token = token;
+		chatClient.member = member;
 	}
 
 	private async processMessage(client: WebSocket, payload: unknown): Promise<void> {

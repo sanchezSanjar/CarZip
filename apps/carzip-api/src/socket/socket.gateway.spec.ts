@@ -70,3 +70,42 @@ describe('SocketGateway: chat history keeps 7 days', () => {
 		expect(shown.map((m: { text: string }) => m.text)).toEqual(['new']);
 	});
 });
+
+describe('SocketGateway: a new access token on an open connection (auth)', () => {
+	const member = (nick: string) => ({ _id: 'm1', memberNick: nick, memberType: 'USER' });
+
+	/** an open chat connection; loadMember is faked: a token starting with "good" is valid */
+	function connected(token: string | null) {
+		const { gateway } = setup([]);
+		const ws = { readyState: 1, send: () => undefined, close: (code: number) => (closedWith = code) };
+		let closedWith = 0;
+		const chatClient = { token, member: token ? member('old_nick') : null };
+		gateway.clients.set(ws, chatClient);
+		gateway.loadMember = async (_client: unknown, next: string) => {
+			if (next.startsWith('good')) return member('new_nick');
+			ws.close(4001);
+			return null;
+		};
+		return { gateway, ws, chatClient, closed: () => closedWith };
+	}
+
+	it('a valid token replaces the old one, and the member data is fresh', async () => {
+		const { gateway, ws, chatClient } = connected('old-token');
+		await gateway.handleAuth(ws, 'good-new-token');
+		expect(chatClient.token).toBe('good-new-token');
+		expect(chatClient.member.memberNick).toBe('new_nick');
+	});
+
+	it('a guest connection becomes a member one', async () => {
+		const { gateway, ws, chatClient } = connected(null);
+		await gateway.handleAuth(ws, 'good-token');
+		expect(chatClient.token).toBe('good-token');
+	});
+
+	it('a bad token closes the connection with 4001 and keeps nothing', async () => {
+		const { gateway, ws, chatClient, closed } = connected('old-token');
+		await gateway.handleAuth(ws, 'stolen-or-expired');
+		expect(closed()).toBe(4001);
+		expect(chatClient.token).toBe('old-token');
+	});
+});
