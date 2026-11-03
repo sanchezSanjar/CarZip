@@ -21,6 +21,7 @@ import {
 	MemberInput,
 	MembersInquiry,
 } from '../../libs/dto/member/member.input';
+import { DeviceInput } from '../../libs/dto/auth/auth.input';
 import { OtpPurpose } from '@app/common/enums/otp.enum';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { AuthMemberData } from '../../libs/types/auth';
@@ -73,11 +74,11 @@ const PRIVATE_FIELDS = [
 
 // aggregate() ignores the schema's select: false, so lists must exclude secrets explicitly
 const PUBLIC_LIST_PROJECTION = Object.fromEntries(
-	['memberPassword', 'passwordChangedAt', ...PRIVATE_FIELDS].map((key) => [key, 0]),
+	['memberPassword', 'passwordChangedAt', 'sessionsRevokedAt', ...PRIVATE_FIELDS].map((key) => [key, 0]),
 );
 
 // admins see private fields, but never secrets
-const ADMIN_LIST_PROJECTION = { memberPassword: 0, passwordChangedAt: 0 };
+const ADMIN_LIST_PROJECTION = { memberPassword: 0, passwordChangedAt: 0, sessionsRevokedAt: 0 };
 
 const AGENT_ONLY_FIELDS = [
 	'agentCompany',
@@ -142,7 +143,7 @@ export class MemberService {
 		}
 	}
 
-	public async signup(input: MemberInput): Promise<Member> {
+	public async signup({ device, ...input }: MemberInput, ip?: string): Promise<Member> {
 		// the phone must be verified by SMS first (requestOtp + verifyOtp with purpose SIGNUP)
 		await this.otpService.assertPhoneVerified(input.memberPhone);
 		this.assertOwnImages(input);
@@ -170,7 +171,7 @@ export class MemberService {
 			// USER -> logged in right away. AGENT -> PENDING, no token until an admin approves:
 			// the client shows "under review" from memberStatus
 			if (member.memberStatus === MemberStatus.ACTIVE) {
-				member.accessToken = await this.authService.createToken(member);
+				Object.assign(member, await this.issueTokens(member, device, ip));
 			} else if (isAgent) {
 				// Signup flowchart: a new agent application -> every admin is notified
 				await this.notificationService.notifyAdmins({
@@ -295,7 +296,20 @@ export class MemberService {
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { memberPassword, ...member } = found;
-		return { ...member, accessToken: await this.authService.createToken(member) };
+		return { ...member, ...(await this.issueTokens(member, input.device, ip)) };
+	}
+
+	/**
+	 * Tokens for a member who just logged in or signed up. With a device (the mobile app): a session with a
+	 * 15-minute access token and a refresh token. Without (the web today): one 30-day access token.
+	 */
+	private async issueTokens(
+		member: Member,
+		device?: DeviceInput,
+		ip?: string,
+	): Promise<Pick<Member, 'accessToken' | 'refreshToken'>> {
+		if (device) return this.authService.startSession(member, device, ip);
+		return { accessToken: await this.authService.createToken(member) };
 	}
 
 	public async updateMember(authMember: AuthMemberData, input: MemberUpdate): Promise<Member> {
@@ -322,8 +336,8 @@ export class MemberService {
 		}
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
 
-		// the token carries memberNick: a new one keeps it in sync after a nick change
-		return { ...updated, accessToken: await this.authService.createToken(updated) };
+		// the token carries memberNick: a new one keeps it in sync after a nick change (in the same session, if any)
+		return { ...updated, accessToken: await this.authService.createToken(updated, authMember.sessionId) };
 	}
 
 	/**

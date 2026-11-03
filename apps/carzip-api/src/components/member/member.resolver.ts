@@ -27,9 +27,10 @@ import { AuthMemberData } from '../../libs/types/auth';
 export class MemberResolver {
 	constructor(private readonly memberService: MemberService) {}
 
+	// input.device: the mobile app gets a 15-minute access token + refresh token; without it the 30-day token (web)
 	@Mutation(() => Member)
-	public async signup(@Args('input') input: MemberInput): Promise<Member> {
-		return this.memberService.signup(input);
+	public async signup(@Args('input') input: MemberInput, @Context('req') req: Request): Promise<Member> {
+		return this.memberService.signup(input, req.ip);
 	}
 
 	@Mutation(() => Member)

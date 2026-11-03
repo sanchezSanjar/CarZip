@@ -4,7 +4,7 @@ import { MeLiked } from '../like/like';
 import { MeFollowed } from '../follow/follow';
 
 /**
- * A member. memberPassword and passwordChangedAt are NEVER here.
+ * A member. memberPassword, passwordChangedAt and sessionsRevokedAt are NEVER here.
  * Fields marked "private" are null unless the viewer is the member themself or an ADMIN (see getMember).
  */
 @ObjectType()
@@ -50,6 +50,8 @@ export class Member {
 
 	/** JWT, only returned by signup and login. The client sends it back as "Authorization: Bearer <token>" */
 	@Field(() => String, { nullable: true }) accessToken?: string;
+	/** only for login / signup with a device: swap it for new tokens with refreshTokens before the access token expires */
+	@Field(() => String, { nullable: true }) refreshToken?: string;
 	/** "did I like this?" for the logged-in viewer: one entry with myFavorite = true, or empty. null for guests. */
 	@Field(() => [MeLiked], { nullable: true }) meLiked?: MeLiked[];
 	/** "do I follow this member?" for the logged-in viewer: one entry with myFollowing = true, or empty. null for guests. */

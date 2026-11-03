@@ -17,6 +17,7 @@ import { MemberAuthType, MemberStatus, MemberType } from '@app/common/enums/memb
 import { Satisfies } from '../../validators/satisfies';
 import { availableAgentSorts, availableMemberSorts } from '../../config';
 import { Direction, Message } from '@app/common/enums/common.enum';
+import { DeviceInput } from '../auth/auth.input';
 
 // Korean mobile number, digits only: 010xxxxxxxx
 export const PHONE_REGEX = /^01[016789]\d{7,8}$/;
@@ -113,6 +114,13 @@ export class MemberInput {
 	@Length(2, 50)
 	@Field(() => String, { nullable: true })
 	contactKakao?: string;
+
+	/** the mobile app: a USER gets a 15-minute access token + refresh token instead of the 30-day token */
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => DeviceInput)
+	@Field(() => DeviceInput, { nullable: true })
+	device?: DeviceInput;
 }
 
 /**
@@ -198,6 +206,13 @@ export class LoginInput {
 	@Length(6, 30)
 	@Field(() => String)
 	memberPassword: string;
+
+	/** the mobile app: a 15-minute access token + refresh token instead of the 30-day token (API.md §2) */
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => DeviceInput)
+	@Field(() => DeviceInput, { nullable: true })
+	device?: DeviceInput;
 }
 
 @InputType()
