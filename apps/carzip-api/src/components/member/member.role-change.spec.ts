@@ -75,6 +75,7 @@ describe('AuthService.authenticate: role changed after the token was issued', ()
 					}),
 				}),
 			} as never,
+			{} as never, // refresh tokens: not used by authenticate
 		);
 		return service.authenticate('Bearer token');
 	};

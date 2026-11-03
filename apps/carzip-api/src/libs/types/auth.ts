@@ -8,7 +8,8 @@ export interface JwtPayload {
 	memberNick: string;
 	memberType: MemberType;
 	memberStatus: MemberStatus;
-	iat?: number; // issued at (seconds): compared with passwordChangedAt to kill old tokens
+	sid?: string; // refresh-token session (login with a device). Missing on the 30-day tokens of the web
+	iat?: number; // issued at (seconds): compared with passwordChangedAt / sessionsRevokedAt to kill old tokens
 	exp?: number;
 }
 
@@ -18,6 +19,7 @@ export interface AuthMemberData {
 	memberNick: string;
 	memberType: MemberType;
 	memberStatus: MemberStatus;
+	sessionId?: string; // the token's session, so a new access token for this device stays in it
 }
 
 /** request after a guard ran. authMember is set by the server only, never read from the client's body. */

@@ -45,6 +45,8 @@ const MemberSchema = new Schema(
 
 		// JWTs issued before this time must be rejected (set on password reset)
 		passwordChangedAt: { type: Date },
+		// "log out everywhere": access tokens issued before this time are rejected too
+		sessionsRevokedAt: { type: Date },
 		deletedAt: { type: Date },
 	},
 	{ timestamps: true, collection: 'members' },

@@ -9,6 +9,7 @@ const SECRET_KEYS = [
 	'newPassword',
 	'oldPassword',
 	'accessToken',
+	'refreshToken',
 	'token',
 	'resetToken',
 	'otpCode',
