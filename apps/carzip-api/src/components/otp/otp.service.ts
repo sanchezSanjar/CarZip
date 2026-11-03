@@ -175,6 +175,8 @@ export class OtpService {
 			)
 			.exec();
 		if (!result.matchedCount) throw new BadRequestException(Message.RESET_TOKEN_INVALID);
+		// and every device that logged in with a refresh token must log in again with the new password
+		await this.authService.revokeMemberSessions(otp.memberId);
 		return Message.PASSWORD_RESET_DONE;
 	}
 

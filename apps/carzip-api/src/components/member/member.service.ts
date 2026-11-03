@@ -193,7 +193,8 @@ export class MemberService {
 
 	/**
 	 * Logged-in password change: the old password must be right. passwordChangedAt = now, so every OTHER
-	 * session (other phones, a stolen token) is logged out; this device gets a fresh token in the response.
+	 * session (other phones, a stolen token) is logged out; this device gets a fresh token in the response
+	 * and, if it logged in with a device, keeps its refresh token.
 	 */
 	public async changePassword(authMember: AuthMemberData, input: ChangePasswordInput): Promise<Member> {
 		await this.assertPassword(authMember._id, input.oldPassword);
@@ -207,7 +208,8 @@ export class MemberService {
 			.lean<Member>()
 			.exec();
 		if (!updated) throw new BadRequestException(Message.UPDATE_FAILED);
-		return { ...updated, accessToken: await this.authService.createToken(updated) };
+		await this.authService.revokeMemberSessions(authMember._id, authMember.sessionId);
+		return { ...updated, accessToken: await this.authService.createToken(updated, authMember.sessionId) };
 	}
 
 	/**

@@ -16,7 +16,7 @@ const activeMember = {
 };
 const device = { deviceId: 'device-phone-1' };
 
-/** MemberService with only what login() uses; everything is fake, no database */
+/** MemberService with only what login() and changePassword() use; everything is fake, no database */
 function setup() {
 	const memberModel = {
 		findOne: vi.fn(() => ({ select: () => ({ lean: () => resolved(activeMember) }) })),
@@ -64,5 +64,24 @@ describe('MemberService.login: tokens', () => {
 			device,
 			'1.2.3.4',
 		);
+	});
+});
+
+describe('MemberService.changePassword: sessions', () => {
+	const input = { oldPassword: 'old-secret', newPassword: 'new-secret' };
+	const authMember = { ...activeMember, sessionId: 'session-of-this-phone' };
+
+	it('ends every other session, keeps this one and returns its new access token', async () => {
+		const { service, authService } = setup();
+		const member = await service.changePassword(authMember, input);
+		expect(authService.revokeMemberSessions).toHaveBeenCalledWith(memberId, 'session-of-this-phone');
+		expect(authService.createToken).toHaveBeenCalledWith(expect.anything(), 'session-of-this-phone');
+		expect(member.accessToken).toBe('access-token');
+	});
+
+	it('from the web (no session): every refresh-token session ends', async () => {
+		const { service, authService } = setup();
+		await service.changePassword({ ...authMember, sessionId: undefined }, input);
+		expect(authService.revokeMemberSessions).toHaveBeenCalledWith(memberId, undefined);
 	});
 });
