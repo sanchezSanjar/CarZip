@@ -12,6 +12,7 @@ import { FollowModule } from './follow/follow.module';
 import { TestDriveModule } from './test-drive/test-drive.module';
 import { BlockModule } from './block/block.module';
 import { NoticeModule } from './notice/notice.module';
+import { ConversationModule } from './conversation/conversation.module';
 
 @Module({
 	imports: [
@@ -28,6 +29,7 @@ import { NoticeModule } from './notice/notice.module';
 		TestDriveModule,
 		BlockModule,
 		NoticeModule,
+		ConversationModule, // private messages between buyers and dealers
 	],
 })
 export class ComponentsModule {}

@@ -10,5 +10,6 @@ import { SocketGateway } from './socket.gateway';
 		MongooseModule.forFeature([{ name: 'Member', schema: MemberSchema }]), // memberImage for memberData
 	],
 	providers: [SocketGateway],
+	exports: [SocketGateway], // private messages are delivered through the same connections
 })
 export class SocketModule {}

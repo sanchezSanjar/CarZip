@@ -83,4 +83,10 @@ export enum Message {
 	ALREADY_BLOCKED = 'You already blocked this member.',
 	NOT_BLOCKED = 'You have not blocked this member.',
 	NOTICE_REMOVE_ONLY_DELETED = 'Only deleted notices can be removed permanently. Delete the notice first.',
+	CHAT_BUYER_AND_DEALER = 'Private messages are between a buyer and a dealer.',
+	CHAT_DEALER_NEEDS_TEST_DRIVE = 'You can write to a buyer after they request a test drive on one of your cars.',
+	CHAT_BLOCKED = 'You cannot message this member.',
+	CHAT_MEMBER_UNAVAILABLE = 'This member is no longer available.',
+	CHAT_CAR_INVALID = "The car must be one of this dealer's cars.",
+	CHAT_TOO_FAST = 'You are sending messages too fast. Please slow down.',
 }

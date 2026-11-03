@@ -13,6 +13,8 @@ const SECRET_KEYS = [
 	'token',
 	'resetToken',
 	'otpCode',
+	'messageText', // private messages are the members' own business
+	'lastMessageText',
 ];
 const MAX_LENGTH = 200; // long responses (car lists) are cut, the log is for tracing, not for data
 

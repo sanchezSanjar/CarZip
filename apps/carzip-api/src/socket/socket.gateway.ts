@@ -69,6 +69,8 @@ const RATE_LIMIT_WINDOW = 5_000; // ... per 5 seconds per connection
 // Redis: the history list (newest first) and the channel that carries new messages to every API server
 const HISTORY_KEY = 'chat:messages';
 const MESSAGE_CHANNEL = 'chat:message';
+// private messages and read receipts: { to: memberIds, payload }, delivered only to those members' connections
+const PRIVATE_CHANNEL = 'chat:private';
 
 // close codes 4000-4999 are free for applications: the client can tell why it was disconnected
 const CLOSE_UNAUTHORIZED = 4001; // bad / expired token: log in again (or reconnect without a token as a guest)
@@ -124,9 +126,10 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 		if (!subscriber) return;
 		subscriber.on('message', (channel: string, data: string) => {
 			if (channel === MESSAGE_CHANNEL) this.emitData(data);
+			if (channel === PRIVATE_CHANNEL) this.deliverPrivate(data);
 		});
 		subscriber
-			.subscribe(MESSAGE_CHANNEL)
+			.subscribe(MESSAGE_CHANNEL, PRIVATE_CHANNEL)
 			.catch((err: Error) => this.logger.warn(`chat subscribe failed: ${err.message}`));
 	}
 
@@ -274,6 +277,33 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 			}
 		}
 		this.emitData(data);
+	}
+
+	/**
+	 * Private messages (ConversationService): the payload goes only to the connections of these members,
+	 * on every API server (through Redis), never to the rest of the room. Without Redis: this server only.
+	 */
+	public async sendToMembers(memberIds: string[], payload: object): Promise<void> {
+		const data = JSON.stringify({ to: memberIds, payload });
+		if (this.redis.isReady && this.redis.subscriber?.status === 'ready') {
+			try {
+				await this.redis.client!.publish(PRIVATE_CHANNEL, data);
+				return; // our own subscriber delivers it to this server's clients
+			} catch (err) {
+				this.logger.warn(`private publish failed, sending locally: ${(err as Error).message}`);
+			}
+		}
+		this.deliverPrivate(data);
+	}
+
+	private deliverPrivate(data: string): void {
+		const { to, payload } = JSON.parse(data) as { to: string[]; payload: object };
+		const text = JSON.stringify(payload);
+		for (const [client, chatClient] of this.clients) {
+			if (chatClient.member && to.includes(chatClient.member._id) && client.readyState === WebSocket.OPEN) {
+				client.send(text);
+			}
+		}
 	}
 
 	/** no token -> guest. Token -> the member, or the connection is closed (null) */
