@@ -58,19 +58,28 @@ The GraphQL Playground is enabled: open `http://localhost:<PORT_API>/graphql` in
 
 ## 2. Login and the access token
 
-Send the token on every request that needs a logged-in member:
+Send the access token on every request that needs a logged-in member:
 
 ```
 Authorization: Bearer <accessToken>
 ```
 
-- **Lifetime:** 30 days. There is no refresh token yet; when it expires, the user logs in again.
-- **Read fresh every request:** the server re-reads the member on every request. A token stops working immediately when the member is blocked or deleted, or when the password is changed or reset.
+There are two kinds of login. The client picks one with `device` in the `login` / `signup` input:
+
+|                               | Without `device` (the web today) | With `device` (the mobile app)                                                   |
+| ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
+| `accessToken`                 | JWT, valid **30 days**           | JWT, valid **15 minutes**                                                        |
+| `refreshToken`                | `null`                           | random string, valid **60 days**, counted again from every refresh               |
+| when the access token expires | log in again                     | `refreshTokens` gives a new pair ([Refresh tokens](#refresh-tokens-mobile-app)) |
+
+- **Read fresh every request:** the server re-reads the member on every request. An access token stops working immediately when the member is blocked or deleted, when the role changes, when the password is changed or reset, and after `logoutAll`.
 - **New token in the response:** these calls return a fresh `accessToken` on the member. Store it and replace the old one:
   - `login`
   - `signup` (USER only)
   - `updateMember` (the token carries the nick)
   - `changePassword` (every other session is logged out)
+
+  With a device, `updateMember` and `changePassword` keep the device's session: only the access token changes, the refresh token stays.
 - **Agents after signup:** a new agent gets **no token**. Their account is `PENDING` until an admin approves it; then they log in normally.
 
 ```graphql
@@ -95,6 +104,60 @@ mutation {
 | `FORBIDDEN` "Your agent application was rejected…" | agent `REJECTED` (message includes the reason)     |
 | `FORBIDDEN` blocked / unavailable                  | member `BLOCK` or `DELETE`                         |
 | `TOO_MANY_REQUESTS` "Too many failed log-in attempts…" | 5 wrong passwords for one account (or 30 from one IP) within 15 minutes; wait 15 minutes |
+
+### Refresh tokens (mobile app)
+
+Log in (or sign up) with a `device`:
+
+```graphql
+mutation {
+	login(
+		input: {
+			memberNick: "carlover"
+			memberPassword: "secret123"
+			device: { deviceId: "3b0c6f1e-6d4a-4c63-9a55-2f7b1c8e9d10", deviceName: "Galaxy S24", devicePlatform: ANDROID }
+		}
+	) {
+		_id
+		memberNick
+		accessToken
+		refreshToken
+	}
+}
+```
+
+| `device` field   | Rule                                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `deviceId`       | 8–100 chars. Make it once (e.g. a UUID) and keep it on the device. Logging in again on the same device ends its old session |
+| `deviceName`     | optional, 1–100 chars, e.g. the phone model                                                                                  |
+| `devicePlatform` | optional: `IOS`, `ANDROID` or `WEB`                                                                                          |
+
+| Operation                     | Who       | Purpose                                                                                                                                   |
+| ----------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `refreshTokens(refreshToken)` | public    | `{ accessToken, refreshToken }`: a new pair. The sent refresh token is used up                                                            |
+| `logout(refreshToken)`        | public    | ends this device's session; always `true`                                                                                                 |
+| `logoutAll`                   | logged in | ends every session of the member and every access token issued until now, on every device and browser (the web's 30-day ones too); `true` |
+
+```graphql
+mutation {
+	refreshTokens(refreshToken: "<refreshToken>") {
+		accessToken
+		refreshToken
+	}
+}
+```
+
+**Rules for the app:**
+
+- **Storage:** the refresh token in secure storage (Expo `SecureStore`), the access token in memory. The server stores only a hash of the refresh token.
+- **When to refresh:** when a request fails with `UNAUTHENTICATED`, call `refreshTokens` once, store **both** new tokens, and retry the request. Refreshing shortly before `exp` (in the access token's payload) works too.
+- **One refresh at a time:** each refresh token works **once**. Two refreshes with the same token look like a stolen copy (next point) and log the device out. Let one refresh run and make the other requests wait for its result.
+- **Stolen copy (reuse detection):** a refresh token that was already used comes back → the server ends that whole session, for the copy and for the real device. Other devices stay logged in.
+- **Refresh fails:** `UNAUTHENTICATED` (expired, used, logged out, password changed or reset) or `FORBIDDEN` (blocked) → delete both tokens and show the login screen.
+- **Logout:** call `logout(refreshToken)`, then delete both tokens. The access token itself keeps working until it expires (15 minutes at most), so it must be deleted on the device.
+- **Password:** `resetPassword` ends every session. `changePassword` ends every other session; this device keeps its refresh token and gets a new access token.
+- **Role change by an admin:** the old access token stops working; `refreshTokens` returns one with the new role.
+- **Live chat:** connect with the current access token. When the chat closes with `4001`, refresh and reconnect (§16).
 
 ---
 
@@ -122,7 +185,7 @@ GraphQL errors arrive in the standard `errors` array (usually with HTTP 200):
 | code                                           | When                                                                                 |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `BAD_REQUEST`                                  | invalid input, or the action isn't allowed in the current state                      |
-| `UNAUTHENTICATED`                              | no token, invalid or expired token, wrong login                                      |
+| `UNAUTHENTICATED`                              | no token, invalid or expired token, wrong login, used or ended refresh token         |
 | `FORBIDDEN`                                    | wrong role, or blocked (globally or personally)                                      |
 | `NOT_FOUND`                                    | the item doesn't exist, or you may not see it                                        |
 | `TOO_MANY_REQUESTS`                            | SMS code limits                                                                      |
@@ -203,8 +266,9 @@ mutation {
 | `contactPhone`, `contactWhatsapp` | phone number (`02-123-4567`, `+82 10 …`); agents only          |
 | `contactEmail`                    | email; agents only                                             |
 | `contactTelegram`, `contactKakao` | 2–50 chars; agents only                                        |
+| `device`                          | optional, the mobile app: a refresh token too (see §2)         |
 
-- **USER:** gets `memberStatus: ACTIVE` and an `accessToken`.
+- **USER:** gets `memberStatus: ACTIVE` and an `accessToken` (with `device`, also a `refreshToken`).
 - **AGENT:** gets `memberStatus: PENDING` and **no token**. Show "under review, usually within 24 hours". Every active admin gets an in-app notification and an SMS about the new application.
 
 **Public vs private profile fields.** Everyone sees the public fields. Only the member themself and admins also see `memberPhone`, `memberFullName`, `memberWarnings`, `memberBlocks`, `agentBusinessNo`, `agentBusinessCard`, `agentRejectReason` and `deletedAt`; for anyone else these come back `null`.
@@ -248,7 +312,7 @@ Used in three places: **signup**, **forgot password**, **change phone**.
 1. `requestOtp(phone, RESET_PASSWORD)`.
 2. `verifyOtp(phone, RESET_PASSWORD, code)` returns a `resetToken`, valid for **10 minutes**.
 3. `resetPassword(resetToken, newPassword)`.
-4. The user logs in again; all old tokens are invalid.
+4. The user logs in again; all old access tokens are invalid and every device session (refresh token) has ended.
 
 This is also how an **agent created by an admin** sets their first password (§15).
 
@@ -545,7 +609,7 @@ All admin operations require `memberType: ADMIN`.
 | Operation                                                                             | Purpose                                                                                                                                                                                                                        |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `getAllMembersByAdmin(input: MembersInquiry)`                                         | all members; `search: { memberStatus, memberType, text }`; `sort` adds `memberWarnings`, `memberBlocks`. Pending agent applications: `search: { memberType: AGENT, memberStatus: PENDING }, sort: "createdAt", direction: ASC` |
-| `updateMemberByAdmin(input: { _id, memberType?, memberStatus?, agentRejectReason? })` | approve an agent (`ACTIVE`), reject (`REJECTED` + reason 5–300 chars), `BLOCK`, `DELETE`. Admin accounts (including your own) can't be changed here. A `memberType` change (USER ↔ AGENT) is refused while the member has listed cars or open test drives; their old token stops working, so they log in again. |
+| `updateMemberByAdmin(input: { _id, memberType?, memberStatus?, agentRejectReason? })` | approve an agent (`ACTIVE`), reject (`REJECTED` + reason 5–300 chars), `BLOCK`, `DELETE`. Admin accounts (including your own) can't be changed here. A `memberType` change (USER ↔ AGENT) is refused while the member has listed cars or open test drives; their old access token stops working, so they log in again (the mobile app just refreshes, §2). |
 | `createAgentByAdmin(input: AgentInputByAdmin)`                                        | create an ACTIVE, approved agent directly. No password is set: tell the dealer to use **"Forgot password"** with their phone to set one (§6).                                                                                  |
 | `getAllCarsByAdmin(input: AllCarsInquiry)`                                            | all cars; `search: { carStatus, locationList, agentId }`                                                                                                                                                                       |
 | `updateCarByAdmin(input: { _id, carStatus, carHoldReason? })`                         | `HOLD` (reason 5–300 chars, required), `DELETE`, or `ACTIVE` to restore. The dealer is notified.                                                                                                                               |
@@ -599,7 +663,7 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 - **Text:** 1–500 characters after trimming.
 - **Rate limit:** at most 5 messages per 5 seconds per connection.
 - **Close codes** (the server closes the socket):
-  - `4001`: invalid or expired token → log in again, or reconnect without a token as a guest
+  - `4001`: invalid or expired token → log in again, or reconnect without a token as a guest. The mobile app's access token lasts 15 minutes: refresh first (§2), then reconnect with the new one
   - `4003`: blocked member
   - `1009`: a frame over 64 KB
 - **Account status:** checked on connect and again on every message.
