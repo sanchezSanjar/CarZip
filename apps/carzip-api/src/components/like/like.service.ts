@@ -45,6 +45,11 @@ export class LikeService {
 	 * Race-safe for double taps / two devices: removing is one atomic step, and if a parallel request
 	 * already created the like, the unique index refuses ours and nothing changes (0).
 	 */
+	/** the viewer's "did I like this?" after a toggle: so the heart in the app can change at once */
+	public meLikedAfter(memberId: Types.ObjectId, likeRefId: Types.ObjectId, modifier: 1 | -1 | 0) {
+		return modifier === -1 ? [] : [{ memberId: String(memberId), likeRefId: String(likeRefId), myFavorite: true }];
+	}
+
 	public async toggleLike(input: LikeInput): Promise<1 | -1 | 0> {
 		const { memberId, likeRefId } = input;
 		if (await this.likeModel.findOneAndDelete({ memberId, likeRefId }).exec()) return -1;

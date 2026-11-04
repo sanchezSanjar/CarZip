@@ -418,7 +418,7 @@ export class MemberService {
 		}
 		// the liker sees the target's public profile only
 		for (const key of PRIVATE_FIELDS) delete updated[key];
-		return updated;
+		return { ...updated, meLiked: this.likeService.meLikedAfter(memberId, targetId, modifier) };
 	}
 
 	/** "do I follow this member?": [{ myFollowing: true }] if followerId follows followingId, [] if not */

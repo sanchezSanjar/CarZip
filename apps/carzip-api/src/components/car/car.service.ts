@@ -304,7 +304,11 @@ export class CarService {
 			});
 		}
 		const agent = await this.memberModel.findById(ownerId).select(AGENT_PUBLIC_FIELDS).lean<AgentPublic>().exec();
-		return { ...updated, agentData: agent ?? undefined };
+		return {
+			...updated,
+			agentData: agent ?? undefined,
+			meLiked: this.likeService.meLikedAfter(memberId, carId, modifier),
+		};
 	}
 
 	/**

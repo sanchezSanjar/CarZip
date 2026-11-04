@@ -183,7 +183,11 @@ export class BoardArticleService {
 			.select(PUBLIC_MEMBER_FIELDS.join(' '))
 			.lean<AgentPublic>()
 			.exec();
-		return { ...updated, memberData: author ?? undefined };
+		return {
+			...updated,
+			memberData: author ?? undefined,
+			meLiked: this.likeService.meLikedAfter(memberId, articleId, modifier),
+		};
 	}
 
 	/** the public board: ACTIVE articles, newest first by default, with each author's public data */
