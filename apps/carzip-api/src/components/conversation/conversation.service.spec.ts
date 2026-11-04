@@ -84,7 +84,10 @@ function setup({ existing = false, testDrive = false, blocked = false, recentMes
 		{ exists: vi.fn(() => query(testDrive ? { _id: 't' } : null)) } as never,
 		{ findById: vi.fn(() => query(null)), find: vi.fn(() => query([])) } as never,
 		socket as never,
-		{ isUploadedImage: (url: string) => url.includes('/uploads/chat/') } as never,
+		{
+			isUploadedImage: (url: string) => url.includes('/uploads/chat/') && url.endsWith('.webp'),
+			isUploadedVoice: (url: string) => url.includes('/uploads/chat/') && url.endsWith('.m4a'),
+		} as never,
 	);
 	return { service, conversation, conversationModel, messageModel, created, socket };
 }
@@ -195,5 +198,28 @@ describe('ConversationService: messages', () => {
 			Message.CHAT_EMPTY,
 		);
 		expect(created).toHaveLength(0);
+	});
+
+	it('a voice message keeps its length and shows as "🎤 Voice message" in the list; a foreign file is refused', async () => {
+		const { service, conversation, conversationModel } = setup({ existing: true });
+		const id = String(conversation._id);
+		const audio = 'http://localhost:3007/uploads/chat/2f1c7a2e-0c1b-4f7e-9a1d-3b2c1d0e9f8a.m4a';
+		const message = await service.sendMessage(buyer as never, {
+			conversationId: id,
+			messageAudio: audio,
+			messageDuration: 7,
+		});
+		expect(message).toMatchObject({ messageType: 'VOICE', messageAudio: audio, messageDuration: 7 });
+		expect(conversationModel.updateOne).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ $set: expect.objectContaining({ lastMessageText: '🎤 Voice message' }) }),
+		);
+		await expect(
+			service.sendMessage(buyer as never, {
+				conversationId: id,
+				messageAudio: 'https://evil.example/a.m4a',
+				messageDuration: 3,
+			}),
+		).rejects.toThrow(Message.CHAT_VOICE_NOT_UPLOADED);
 	});
 });

@@ -55,6 +55,8 @@ interface MessageDoc {
 	messageType: MessageType;
 	messageText?: string;
 	messageImage?: string;
+	messageAudio?: string;
+	messageDuration?: number;
 	carId?: Types.ObjectId;
 	createdAt: Date;
 }
@@ -155,12 +157,16 @@ export class ConversationService {
 		const carId = input.carId ? await this.assertDealerCar(input.carId, conversation.agentId) : undefined;
 		const text = input.messageText?.trim() ?? '';
 		const image = input.messageImage;
-		if (!text && !image) throw new BadRequestException(Message.CHAT_EMPTY);
+		const audio = input.messageAudio;
+		if (!text && !image && !audio) throw new BadRequestException(Message.CHAT_EMPTY);
+		if (audio && !this.uploadService.isUploadedVoice(audio)) {
+			throw new BadRequestException(Message.CHAT_VOICE_NOT_UPLOADED);
+		}
 		// only photos our upload API produced for chats: no hot-linked or tracking images in private messages
 		if (image && !this.uploadService.isUploadedImage(image, UploadTarget.CHAT)) {
 			throw new BadRequestException(Message.CHAT_IMAGE_NOT_UPLOADED);
 		}
-		const messageType = image ? MessageType.IMAGE : MessageType.TEXT;
+		const messageType = audio ? MessageType.VOICE : image ? MessageType.IMAGE : MessageType.TEXT;
 
 		const created = await this.messageModel.create({
 			conversationId: conversation._id,
@@ -168,6 +174,7 @@ export class ConversationService {
 			messageType,
 			...(text && { messageText: text }),
 			...(image && { messageImage: image }),
+			...(audio && { messageAudio: audio, messageDuration: input.messageDuration }),
 			...(carId && { carId }),
 		});
 		const message = created.toObject() as MessageDoc;
@@ -177,8 +184,8 @@ export class ConversationService {
 				{ _id: conversation._id },
 				{
 					$set: {
-						// the list shows a photo as "📷 Photo" (or its caption)
-						lastMessageText: text || '📷 Photo',
+						// the list shows a photo as "📷 Photo" (or its caption), a recording as "🎤 Voice message"
+						lastMessageText: audio ? '🎤 Voice message' : text || '📷 Photo',
 						lastMessageType: messageType,
 						lastSenderId: me._id,
 						lastMessageAt: message.createdAt,
@@ -301,6 +308,8 @@ export class ConversationService {
 			messageType: message.messageType,
 			messageText: message.messageText,
 			messageImage: message.messageImage,
+			messageAudio: message.messageAudio,
+			messageDuration: message.messageDuration,
 			carId: message.carId ? String(message.carId) : undefined,
 			carData: message.carId ? cars.get(String(message.carId)) : undefined,
 			createdAt: message.createdAt,

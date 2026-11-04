@@ -7,12 +7,13 @@ import { UPLOADS_ROOT } from '@app/common/config/uploads';
 import { UploadTarget } from '@app/common/enums/upload.enum';
 
 const GRACE = 24 * 60 * 60 * 1000; // an upload has a day to be attached to a car / profile / article / message
-// only files the API produced: <uuid>.webp and its <uuid>_thumb.webp. Anything else in the folder is never touched.
-const MAIN_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.webp$/;
+// only files the API produced: <uuid>.webp and its <uuid>_thumb.webp, voice messages <uuid>.m4a / .webm.
+// Anything else in the folder is never touched.
+const MAIN_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(?:webp|m4a|webm)$/; // photo or voice
 const THUMB_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_thumb\.webp$/;
 // the uuid of an uploaded image inside any stored URL, whatever host the URL was built with
 const URL_UUID =
-	/\/uploads\/(?:member|car|article|chat)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.webp/;
+	/\/uploads\/(?:member|car|article|chat)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(?:webp|m4a|webm)/;
 
 /**
  * Uploaded images nobody uses: a dealer uploads photos and never saves the car, a member changes their
@@ -29,7 +30,8 @@ export class UploadBatchService {
 		@InjectModel('Car') private readonly carModel: Model<{ carImages: string[] }>,
 		@InjectModel('Member') private readonly memberModel: Model<{ memberImage?: string; agentBusinessCard?: string }>,
 		@InjectModel('BoardArticle') private readonly boardArticleModel: Model<{ articleImage?: string }>,
-		@InjectModel('PrivateMessage') private readonly privateMessageModel: Model<{ messageImage?: string }>,
+		@InjectModel('PrivateMessage')
+		private readonly privateMessageModel: Model<{ messageImage?: string; messageAudio?: string }>,
 	) {}
 
 	/** returns how many images (main + thumbnail pairs, or lone thumbnails) were deleted */
@@ -66,15 +68,17 @@ export class UploadBatchService {
 	}
 
 	private async usedUuids(): Promise<Set<string>> {
-		const [carImages, memberImages, businessCards, articleImages, chatImages] = await Promise.all([
+		const [carImages, memberImages, businessCards, articleImages, chatImages, chatVoices] = await Promise.all([
 			this.carModel.distinct('carImages').exec(),
 			this.memberModel.distinct('memberImage').exec(),
 			this.memberModel.distinct('agentBusinessCard').exec(),
 			this.boardArticleModel.distinct('articleImage').exec(),
 			this.privateMessageModel.distinct('messageImage').exec(), // gone with the message after 14 days
+			this.privateMessageModel.distinct('messageAudio').exec(),
 		]);
 		const used = new Set<string>();
-		for (const url of [...carImages, ...memberImages, ...businessCards, ...articleImages, ...chatImages]) {
+		const urls = [...carImages, ...memberImages, ...businessCards, ...articleImages, ...chatImages, ...chatVoices];
+		for (const url of urls) {
 			const uuid = typeof url === 'string' ? URL_UUID.exec(url)?.[1] : undefined;
 			if (uuid) used.add(uuid);
 		}

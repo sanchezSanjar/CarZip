@@ -22,6 +22,7 @@ import { Message } from '@app/common/enums/common.enum';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per photo, checked while receiving (413 above it)
 const MAX_FILES = 20; // CarInput.carImages allows up to 20 photos
+const MAX_VOICE_SIZE = 3 * 1024 * 1024; // a 2-minute voice message is about 1 MB
 
 /**
  * Image upload over REST multipart (Car Listing flowchart: NOT through GraphQL).
@@ -57,6 +58,14 @@ export class UploadController {
 	): Promise<UploadedImage[]> {
 		this.checkTarget(input.target, authMember);
 		return this.uploadService.uploadImages(files, input.target);
+	}
+
+	/** POST /upload/voice   form-data: file=<.m4a or .webm>. A voice message for a private conversation (any member) */
+	@Post('voice')
+	@HttpCode(200)
+	@UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_VOICE_SIZE, files: 1 } }))
+	public async uploadVoice(@UploadedFile() file: Express.Multer.File | undefined): Promise<{ url: string }> {
+		return this.uploadService.uploadVoice(file);
 	}
 
 	/** only agents post cars and only agents / admins write articles, so only they upload those images */

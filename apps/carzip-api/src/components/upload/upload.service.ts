@@ -30,6 +30,21 @@ const SIZES: Record<UploadTarget, { main: sharp.ResizeOptions; thumb: sharp.Resi
 	},
 };
 
+/**
+ * Voice messages: the phone apps record AAC in an MP4 container (.m4a), the browser build records WebM.
+ * There is no audio converter on the server, so the file is stored as it came, after checking that its
+ * first bytes really are that format; it is served with a fixed type and nosniff, never run or shown as a page.
+ */
+const VOICE_FORMATS = [
+	{
+		ext: 'm4a',
+		contentType: 'audio/mp4',
+		matches: (b: Buffer) => b.length > 12 && b.toString('latin1', 4, 8) === 'ftyp',
+	},
+	{ ext: 'webm', contentType: 'audio/webm', matches: (b: Buffer) => b.length > 4 && b.readUInt32BE(0) === 0x1a45dfa3 },
+];
+export const VOICE_EXTENSIONS = VOICE_FORMATS.map((format) => format.ext);
+
 interface ProcessedImage {
 	main: Buffer;
 	thumb: Buffer;
@@ -70,6 +85,24 @@ export class UploadService {
 		const saved: UploadedImage[] = [];
 		for (const image of processed) saved.push(await this.save(image, target));
 		return saved;
+	}
+
+	/** a voice message for a private conversation (target chat): checked, stored, its URL returned */
+	public async uploadVoice(file: Express.Multer.File | undefined): Promise<{ url: string }> {
+		if (!file) throw new BadRequestException(Message.NO_FILE);
+		const format = VOICE_FORMATS.find((candidate) => candidate.matches(file.buffer));
+		if (!format) throw new BadRequestException(Message.INVALID_VOICE);
+		const url = await this.storage.save(
+			`${UploadTarget.CHAT}/${randomUUID()}.${format.ext}`,
+			file.buffer,
+			format.contentType,
+		);
+		return { url };
+	}
+
+	/** true only for a voice message URL that our upload API produced */
+	public isUploadedVoice(url: string): boolean {
+		return this.storage.isOwnUrl(url, UploadTarget.CHAT, VOICE_EXTENSIONS);
 	}
 
 	/** true only for a main image URL that our upload API produced for this target */

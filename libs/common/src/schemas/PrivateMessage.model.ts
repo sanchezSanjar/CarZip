@@ -9,6 +9,8 @@ const PrivateMessageSchema = new Schema(
 		messageType: { type: String, enum: MessageType, default: MessageType.TEXT },
 		messageText: { type: String }, // the text, or the caption of a photo
 		messageImage: { type: String }, // IMAGE: an upload of target chat
+		messageAudio: { type: String }, // VOICE: POST /upload/voice
+		messageDuration: { type: Number }, // VOICE: seconds, as the app recorded it
 		carId: { type: Schema.Types.ObjectId, ref: 'Car' }, // "about this car": shown as a small car card
 	},
 	{ timestamps: { createdAt: true, updatedAt: false }, collection: 'privateMessages' },

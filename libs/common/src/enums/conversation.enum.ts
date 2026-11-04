@@ -1,9 +1,10 @@
 import { registerEnumType } from '@nestjs/graphql';
 
-/** what a private message carries. VOICE comes in the next step */
+/** what a private message carries */
 export enum MessageType {
 	TEXT = 'TEXT',
 	IMAGE = 'IMAGE', // a photo, with an optional caption in messageText
+	VOICE = 'VOICE', // a recording of up to 2 minutes
 }
 registerEnumType(MessageType, { name: 'MessageType' });
 

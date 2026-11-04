@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsDate, IsInt, IsMongoId, IsOptional, IsUrl, Length, Max, Min } from 'class-validator';
+import { IsDate, IsInt, IsMongoId, IsOptional, IsUrl, Length, Max, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /** open (or create) the conversation with a member, optionally about one of the dealer's cars */
@@ -32,6 +32,19 @@ export class SendMessageInput {
 	@IsUrl({ require_tld: false })
 	@Field(() => String, { nullable: true })
 	messageImage?: string;
+
+	/** a voice message uploaded with POST /upload/voice, with its length */
+	@IsOptional()
+	@IsUrl({ require_tld: false })
+	@Field(() => String, { nullable: true })
+	messageAudio?: string;
+
+	@ValidateIf((o: SendMessageInput) => o.messageAudio != null)
+	@IsInt()
+	@Min(1)
+	@Max(120)
+	@Field(() => Int, { nullable: true })
+	messageDuration?: number;
 
 	/** "about this car": the car becomes the conversation's car and shows as a card in the message */
 	@IsOptional()

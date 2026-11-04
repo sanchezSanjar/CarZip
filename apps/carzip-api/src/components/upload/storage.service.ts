@@ -12,12 +12,13 @@ export abstract class StorageService {
 	/** saves the file under key (e.g. "car/<uuid>.webp") and returns its public URL */
 	public abstract save(key: string, data: Buffer, contentType: string): Promise<string>;
 	public abstract delete(key: string): Promise<void>;
-	/** true if url is a file this storage serves under folder (e.g. "car") */
-	public abstract isOwnUrl(url: string, folder: string): boolean;
+	/** true if url is a file this storage serves under folder (e.g. "car"), with one of these extensions */
+	public abstract isOwnUrl(url: string, folder: string, extensions?: string[]): boolean;
 }
 
-// what UploadService names a main image: <uuid>.webp (thumbnails "<uuid>_thumb.webp" are for lists, not listings)
-const UPLOADED_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/;
+// what UploadService names a file: <uuid>.<ext>, e.g. a main image <uuid>.webp (thumbnails "<uuid>_thumb.webp" are
+// for lists, not listings) or a voice message <uuid>.m4a
+const UPLOADED_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.([a-z0-9]+)$/;
 
 /** local disk: ./uploads, served by main.ts at /uploads */
 @Injectable()
@@ -35,9 +36,11 @@ export class LocalStorageService extends StorageService {
 		await unlink(this.pathOf(key)).catch(() => undefined);
 	}
 
-	public isOwnUrl(url: string, folder: string): boolean {
+	public isOwnUrl(url: string, folder: string, extensions = ['webp']): boolean {
 		const prefix = `${this.publicBaseUrl()}/uploads/${folder}/`;
-		return url.startsWith(prefix) && UPLOADED_FILE_NAME.test(url.slice(prefix.length));
+		if (!url.startsWith(prefix)) return false;
+		const ext = UPLOADED_FILE_NAME.exec(url.slice(prefix.length))?.[1];
+		return !!ext && extensions.includes(ext);
 	}
 
 	/** keys are built by the server, but never trust a path: it must stay inside ./uploads */

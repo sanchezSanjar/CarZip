@@ -35,4 +35,22 @@ describe('UploadBatchService: photos of private messages', () => {
 		expect(await service.removeUnused(root)).toBe(1);
 		expect((await readdir(join(root, 'chat'))).sort()).toEqual([`${USED}.webp`, `${USED}_thumb.webp`]);
 	});
+
+	it('a voice message file whose message is gone is deleted too, one still used stays', async () => {
+		for (const uuid of [USED, GONE]) {
+			await writeFile(join(root, 'chat', `${uuid}.m4a`), 'x');
+			await utimes(join(root, 'chat', `${uuid}.m4a`), TWO_DAYS_AGO, TWO_DAYS_AGO);
+		}
+		const service = new UploadBatchService(
+			distinct([]) as never,
+			distinct([]) as never,
+			distinct([]) as never,
+			distinct([
+				`https://api.carzip.kr/uploads/chat/${USED}.webp`,
+				`https://api.carzip.kr/uploads/chat/${USED}.m4a`,
+			]) as never,
+		);
+		await service.removeUnused(root);
+		expect((await readdir(join(root, 'chat'))).sort()).toEqual([`${USED}.m4a`, `${USED}.webp`, `${USED}_thumb.webp`]);
+	});
 });
