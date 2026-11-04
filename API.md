@@ -440,6 +440,7 @@ Images are uploaded over REST, not GraphQL. **Logged in only** (send the `Author
   - `member`: profile photo; anyone logged in.
   - `car`: listing photos; AGENT or ADMIN.
   - `article`: article image; AGENT or ADMIN.
+  - `chat`: a photo for a private message (§17); anyone logged in. Deleted about a day after its message.
 - **Formats:** jpeg, png and webp; **max 10 MB per file**.
 - **What the server stores:** it re-encodes every image to WebP and removes location (GPS) data.
 - **`images` is all-or-nothing:** one bad file fails the whole request, and the error names that file.
@@ -676,14 +677,14 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 
 ## 17. Private messages
 
-Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger. Text for now; photos and voice messages come later. Everything needs a logged-in member.
+Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger: text and photos (voice messages come later). Everything needs a logged-in member.
 
 | Operation | Purpose |
 | --- | --- |
 | `startConversation(input: { targetId, carId? })` | opens the conversation with this member, or creates it. `carId`: one of the dealer's cars, shown as the conversation's car |
 | `getConversations(input: { page, limit })` | my conversations, latest message first: `partner` (the other side's public profile), `carData`, `lastMessageText`, `myUnread`, `partnerReadAt` |
 | `getMessages(input: { conversationId, before?, limit })` | the thread, **newest first**, 1–50 per page. Older page: `before` = `createdAt` of the oldest message shown |
-| `sendMessage(input: { conversationId, messageText, carId? })` | 1–1000 characters; returns the message |
+| `sendMessage(input: { conversationId, messageText?, messageImage?, carId? })` | a text (up to 1000 characters), a photo, or a photo with a caption; returns the message (`messageType` `TEXT` or `IMAGE`) |
 | `markConversationRead(conversationId)` | I opened the thread: `myUnread` becomes 0 and the other side sees it as read |
 | `getUnreadMessageCount` | the number for the Chat tab badge |
 
@@ -697,7 +698,9 @@ Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a me
 - At most **20 messages a minute** per member (`TOO_MANY_REQUESTS`).
 - Someone outside a conversation gets `NOT_FOUND` for it; nothing about it is revealed.
 
-**Kept 14 days:** each message is deleted 14 days after it was sent, and a conversation 14 days after its last message (the public room in §16 keeps 7 days). The text is never written to the server logs.
+**Photos:** upload first with `POST /upload/image`, `target=chat` (any logged-in member, see §8), then send the returned `url` as `messageImage`. Only our own chat uploads are accepted. The list shows a photo as its caption, or "📷 Photo". Show the upload's `thumbnailUrl` (`..._thumb.webp`) in the bubble and the full photo when tapped.
+
+**Kept 14 days:** each message is deleted 14 days after it was sent, and a conversation 14 days after its last message (the public room in §16 keeps 7 days). A photo is deleted about a day after its message. The text is never written to the server logs.
 
 **Live, over the same WebSocket as §16** (connected with a token): only the two members of the conversation receive
 
