@@ -679,7 +679,7 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 
 ## 17. Private messages
 
-Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger: text, photos and voice messages. Everything needs a logged-in member.
+Conversations between **a buyer (`USER`) and a dealer (`AGENT`), or between two dealers**, like a messenger: text, photos and voice messages. Everything needs a logged-in member.
 
 | Operation | Purpose |
 | --- | --- |
@@ -693,9 +693,10 @@ Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a me
 **Who can write to whom:**
 
 - A **buyer** can start a conversation with any ACTIVE dealer.
-- A **dealer** can start one only with a buyer who requested a test drive on one of the dealer's cars (any status). After that, both sides reply freely.
-- Never buyer to buyer, dealer to dealer, or with an admin: `FORBIDDEN` "Private messages are between a buyer and a dealer."
-- A dealer's personal block (§12) stops the conversation both ways: `FORBIDDEN` "You cannot message this member."
+- A **dealer** can start one with any other ACTIVE dealer. Two dealers have one conversation, whoever writes first.
+- A **dealer** can start one with a **buyer** only if the buyer requested a test drive on one of the dealer's cars (any status). After that, both sides reply freely.
+- Never buyer to buyer, with an admin, or with yourself: `FORBIDDEN` "Private messages are between a buyer and a dealer, or between two dealers."
+- A dealer's personal block (§12) stops the conversation both ways (between two dealers, either one's block): `FORBIDDEN` "You cannot message this member."
 - A member who is no longer ACTIVE can't be written to.
 - At most **20 messages a minute** per member (`TOO_MANY_REQUESTS`).
 - Someone outside a conversation gets `NOT_FOUND` for it; nothing about it is revealed.

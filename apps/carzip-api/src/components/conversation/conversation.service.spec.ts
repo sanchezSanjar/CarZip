@@ -30,13 +30,19 @@ const otherBuyer = {
 	memberType: MemberType.USER,
 	memberStatus: MemberStatus.ACTIVE,
 };
+const otherDealer = {
+	_id: new Types.ObjectId(),
+	memberNick: 'dealer2',
+	memberType: MemberType.AGENT,
+	memberStatus: MemberStatus.ACTIVE,
+};
 const admin = {
 	_id: new Types.ObjectId(),
 	memberNick: 'admin',
 	memberType: MemberType.ADMIN,
 	memberStatus: MemberStatus.ACTIVE,
 };
-const members = [buyer, dealer, otherBuyer, admin];
+const members = [buyer, dealer, otherBuyer, otherDealer, admin];
 
 /** the service with fake models; the conversation between buyer and dealer exists when `existing` */
 function setup({ existing = false, testDrive = false, blocked = false, recentMessages = 0 } = {}) {
@@ -121,6 +127,22 @@ describe('ConversationService: who may start a conversation', () => {
 	it('buyer to buyer and admins are refused: messages are between a buyer and a dealer', async () => {
 		await expect(start(setup().service, buyer, otherBuyer)).rejects.toThrow(Message.CHAT_BUYER_AND_DEALER);
 		await expect(start(setup().service, admin, dealer)).rejects.toThrow(Message.CHAT_BUYER_AND_DEALER);
+	});
+
+	it('a dealer can write to another dealer without a test drive; either side finds the same conversation', async () => {
+		const { service, conversationModel } = setup();
+		await expect(start(service, dealer, otherDealer)).resolves.toBeTruthy();
+		// looked up in both directions, so dealer2 writing back opens this conversation, not a second one
+		expect(conversationModel.findOne).toHaveBeenCalledWith({
+			$or: [
+				{ buyerId: dealer._id, agentId: otherDealer._id },
+				{ buyerId: otherDealer._id, agentId: dealer._id },
+			],
+		});
+	});
+
+	it('nobody can start a conversation with themself', async () => {
+		await expect(start(setup().service, dealer, dealer)).rejects.toThrow(Message.CHAT_BUYER_AND_DEALER);
 	});
 
 	it("a dealer's personal block stops the conversation", async () => {

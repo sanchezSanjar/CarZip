@@ -67,9 +67,10 @@ const PARTNER_FIELDS = 'memberNick memberImage memberType agentCompany memberSta
 const CAR_FIELDS = 'carTitle carImages carPrice carPriceUsd carStatus memberId';
 
 /**
- * Private messages between a buyer (USER) and a dealer (AGENT), like a messenger.
- * - a buyer can write to any ACTIVE dealer
+ * Private messages, like a messenger: between a buyer (USER) and a dealer (AGENT), or between two dealers.
+ * - a buyer can write to any ACTIVE dealer; a dealer to any other ACTIVE dealer
  * - a dealer can start with a buyer who requested a test drive on one of their cars; after that both reply freely
+ * - never buyer to buyer, with an admin, or with yourself
  * - a dealer's personal block stops the conversation both ways
  * - messages and conversations are deleted 14 days after the last message (TTL indexes)
  * New messages and read receipts also go live over the WebSocket, only to the two members.
@@ -94,20 +95,27 @@ export class ConversationService {
 		if (!target || target.memberStatus !== MemberStatus.ACTIVE)
 			throw new NotFoundException(Message.CHAT_MEMBER_UNAVAILABLE);
 
-		const pair = this.pairOf(me, target.memberType, new Types.ObjectId(input.targetId));
+		const targetId = new Types.ObjectId(input.targetId);
+		const pair = this.pairOf(me, target.memberType, targetId);
 		await this.assertNotBlocked(pair.buyerId, pair.agentId);
 
-		const existing = await this.conversationModel.findOne(pair).lean<ConversationDoc>().exec();
+		// two dealers have one conversation, whoever wrote first (that one sits on the buyer side)
+		const swapped = { buyerId: pair.agentId, agentId: pair.buyerId };
+		const sameRole = target.memberType === me.memberType;
+		const existing = await this.conversationModel
+			.findOne(sameRole ? { $or: [pair, swapped] } : pair)
+			.lean<ConversationDoc>()
+			.exec();
 		// a dealer starts only with buyers who showed interest by requesting a test drive
-		if (!existing && me.memberType === MemberType.AGENT) {
+		if (!existing && me.memberType === MemberType.AGENT && target.memberType === MemberType.USER) {
 			const asked = await this.testDriveModel.exists({ memberId: pair.buyerId, sellerId: pair.agentId }).exec();
 			if (!asked) throw new ForbiddenException(Message.CHAT_DEALER_NEEDS_TEST_DRIVE);
 		}
 
-		const carId = input.carId ? await this.assertDealerCar(input.carId, pair.agentId) : undefined;
+		const carId = input.carId ? await this.assertDealerCar(input.carId, [pair.buyerId, pair.agentId]) : undefined;
 		const conversation = await this.conversationModel
 			.findOneAndUpdate(
-				pair,
+				existing ? { _id: existing._id } : pair,
 				{ $setOnInsert: { lastMessageAt: new Date() }, ...(carId && { $set: { carId } }) },
 				{ upsert: true, new: true },
 			)
@@ -157,7 +165,9 @@ export class ConversationService {
 			.exec();
 		if (recent >= RATE_MAX) throw new HttpException(Message.CHAT_TOO_FAST, HttpStatus.TOO_MANY_REQUESTS);
 
-		const carId = input.carId ? await this.assertDealerCar(input.carId, conversation.agentId) : undefined;
+		const carId = input.carId
+			? await this.assertDealerCar(input.carId, [conversation.buyerId, conversation.agentId])
+			: undefined;
 		const text = input.messageText?.trim() ?? '';
 		const image = input.messageImage;
 		const audio = input.messageAudio;
@@ -252,24 +262,41 @@ export class ConversationService {
 		return result?.total ?? 0;
 	}
 
-	/** buyer + dealer, whoever starts. Admins and same-role pairs are refused */
+	/**
+	 * buyer + dealer (whoever starts), or dealer + dealer (the one who starts on the buyer side).
+	 * Buyer + buyer, admins and yourself are refused.
+	 */
 	private pairOf(me: AuthMemberData, targetType: MemberType, targetId: Types.ObjectId) {
+		if (targetId.equals(me._id)) throw new ForbiddenException(Message.CHAT_BUYER_AND_DEALER);
 		if (me.memberType === MemberType.USER && targetType === MemberType.AGENT)
 			return { buyerId: me._id, agentId: targetId };
 		if (me.memberType === MemberType.AGENT && targetType === MemberType.USER)
 			return { buyerId: targetId, agentId: me._id };
+		if (me.memberType === MemberType.AGENT && targetType === MemberType.AGENT)
+			return { buyerId: me._id, agentId: targetId };
 		throw new ForbiddenException(Message.CHAT_BUYER_AND_DEALER);
 	}
 
 	private async assertNotBlocked(buyerId: Types.ObjectId, agentId: Types.ObjectId): Promise<void> {
-		const blocked = await this.blockModel.exists({ blockerId: agentId, blockedId: buyerId }).exec();
+		// both ways: between two dealers either one can have blocked the other
+		const blocked = await this.blockModel
+			.exists({
+				$or: [
+					{ blockerId: agentId, blockedId: buyerId },
+					{ blockerId: buyerId, blockedId: agentId },
+				],
+			})
+			.exec();
 		if (blocked) throw new ForbiddenException(Message.CHAT_BLOCKED);
 	}
 
-	private async assertDealerCar(carId: string, agentId: Types.ObjectId): Promise<Types.ObjectId> {
+	/** the car must belong to one of the two members (between dealers it can be either one's) */
+	private async assertDealerCar(carId: string, memberIds: Types.ObjectId[]): Promise<Types.ObjectId> {
 		const id = new Types.ObjectId(carId);
 		const car = await this.carModel.findById(id).select('memberId').lean().exec();
-		if (!car || !car.memberId.equals(agentId)) throw new BadRequestException(Message.CHAT_CAR_INVALID);
+		if (!car || !memberIds.some((memberId) => car.memberId.equals(memberId))) {
+			throw new BadRequestException(Message.CHAT_CAR_INVALID);
+		}
 		return id;
 	}
 
