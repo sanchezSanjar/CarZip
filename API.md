@@ -25,7 +25,8 @@ The exact types (every field, every enum value) are always available from the se
 15. [Admin](#15-admin)
 16. [Live chat (WebSocket)](#16-live-chat-websocket)
 17. [Private messages](#17-private-messages)
-18. [Enums](#18-enums)
+18. [Push notifications](#18-push-notifications)
+19. [Enums](#19-enums)
 
 ---
 
@@ -588,7 +589,7 @@ Each notification has:
 | `CAR_MODERATED`                     | dealer         | an admin held (with reason), deleted or restored their car          |
 | `LISTING_CHECK`                     | dealer         | "Is this car still for sale?"                                       |
 
-Notifications don't arrive live yet: poll `getUnreadNotificationCount`, e.g. on page change or every minute. Read notifications are deleted automatically after 90 days, and any notification after a year.
+On the web, poll `getUnreadNotificationCount`, e.g. on page change or every minute; the mobile app also gets each notification as a push (§18). Read notifications are deleted automatically after 90 days, and any notification after a year.
 
 ---
 
@@ -716,7 +717,29 @@ Read receipts: a message of mine is **read** when its `createdAt` ≤ the conver
 
 ---
 
-## 18. Enums
+## 18. Push notifications
+
+The mobile app gets push notifications through **Expo's push service**. The app asks the phone for an Expo push token (`expo-notifications`) and sends it here after login.
+
+| Operation | Who | Purpose |
+| --- | --- | --- |
+| `registerPushToken(input: { token, devicePlatform? })` | logged in | this phone gets pushes for the logged-in member. `token` looks like `ExponentPushToken[...]`. Call it after every login (another member logging in on the same phone takes the token over) |
+| `unregisterPushToken(token)` | public | this phone gets no more pushes (e.g. notifications turned off in the app); always `true` |
+
+**What is pushed:**
+
+| When | `title` / `body` | `data` (what to open when tapped) |
+| --- | --- | --- |
+| a new private message (§17) | the sender's nick / the text, "📷 …" or "🎤 Voice message" | `{ type: "message", conversationId }` |
+| every in-app notification (§13): likes, comments, follows, test drives, reminders, agent decisions, listing checks | `notificationTitle` / `notificationDesc` | `{ type: "notification", notificationType, carId?, articleId? }` |
+
+**When a phone stops getting pushes:** the token belongs to the login session it was registered with. `logout` of that session, `logoutAll`, a password reset and a password change (other devices) remove it. Expo reporting the app as uninstalled removes it too, and a phone not seen for 90 days is forgotten.
+
+Sending never blocks or fails the action that caused it. With "enhanced push security" on in the Expo project, set `EXPO_ACCESS_TOKEN` in the server's `.env`.
+
+---
+
+## 19. Enums
 
 | Enum                                 | Values                                                                                                                                                                                                                                                                                     |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
