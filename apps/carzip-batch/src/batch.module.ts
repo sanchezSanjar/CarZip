@@ -1,3 +1,4 @@
+import { PushModule } from '@app/common/push/push.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -26,6 +27,7 @@ import PrivateMessageSchema from '@app/common/schemas/PrivateMessage.model';
 		ConfigModule.forRoot(),
 		DatabaseModule,
 		ScheduleModule.forRoot(),
+		PushModule, // reminders and test-drive changes also go to the phones
 		MongooseModule.forFeature([
 			{ name: 'Car', schema: CarSchema },
 			{ name: 'Member', schema: MemberSchema },

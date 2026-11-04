@@ -76,6 +76,7 @@ function setup({ existing = false, testDrive = false, blocked = false, recentMes
 		find: vi.fn(() => query(members)),
 	};
 	const socket = { sendToMembers: vi.fn() };
+	const push = { sendToMembers: vi.fn() };
 	const service = new ConversationService(
 		conversationModel as never,
 		messageModel as never,
@@ -88,8 +89,9 @@ function setup({ existing = false, testDrive = false, blocked = false, recentMes
 			isUploadedImage: (url: string) => url.includes('/uploads/chat/') && url.endsWith('.webp'),
 			isUploadedVoice: (url: string) => url.includes('/uploads/chat/') && url.endsWith('.m4a'),
 		} as never,
+		push as never,
 	);
-	return { service, conversation, conversationModel, messageModel, created, socket };
+	return { service, conversation, conversationModel, messageModel, created, socket, push };
 }
 
 const start = (service: ConversationService, me: typeof buyer, target: typeof buyer) =>
@@ -221,5 +223,18 @@ describe('ConversationService: messages', () => {
 				messageDuration: 3,
 			}),
 		).rejects.toThrow(Message.CHAT_VOICE_NOT_UPLOADED);
+	});
+
+	it("the other side's phone gets a push with the sender's name, not the sender's", async () => {
+		const { service, conversation, push } = setup({ existing: true });
+		await service.sendMessage(buyer as never, {
+			conversationId: String(conversation._id),
+			messageText: 'Still available?',
+		});
+		expect(push.sendToMembers).toHaveBeenCalledWith([dealer._id], {
+			title: 'cz_buyer',
+			body: 'Still available?',
+			data: { type: 'message', conversationId: String(conversation._id) },
+		});
 	});
 });

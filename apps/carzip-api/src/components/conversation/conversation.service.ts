@@ -5,6 +5,7 @@ import {
 	HttpStatus,
 	Injectable,
 	NotFoundException,
+	Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -27,6 +28,7 @@ import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { MessageType } from '@app/common/enums/conversation.enum';
 import { SocketGateway } from '../../socket/socket.gateway';
 import { UploadService } from '../upload/upload.service';
+import { PushService } from '@app/common/push/push.service';
 import { UploadTarget } from '@app/common/enums/upload.enum';
 
 // spam limit: at most 20 private messages per minute per member
@@ -84,6 +86,7 @@ export class ConversationService {
 		@InjectModel('Car') private readonly carModel: Model<{ memberId: Types.ObjectId }>,
 		private readonly socket: SocketGateway,
 		private readonly uploadService: UploadService,
+		@Optional() private readonly push?: PushService, // optional: unit tests build the service without it
 	) {}
 
 	public async startConversation(me: AuthMemberData, input: StartConversationInput): Promise<Conversation> {
@@ -200,6 +203,12 @@ export class ConversationService {
 			.exec();
 
 		const [shaped] = await this.shapeMessages([message]);
+		// the other side's phones: the sender's name and the text (or what was sent); tapping opens the conversation
+		void this.push?.sendToMembers([partnerId], {
+			title: me.memberNick,
+			body: audio ? '🎤 Voice message' : image ? `📷 ${text || 'Photo'}` : text,
+			data: { type: 'message', conversationId: String(conversation._id) },
+		});
 		this.socket.sendToMembers([String(conversation.buyerId), String(conversation.agentId)], {
 			event: 'privateMessage',
 			conversationId: String(conversation._id),

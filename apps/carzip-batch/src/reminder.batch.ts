@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CarStatus } from '@app/common/enums/car.enum';
 import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
 import { NotificationInput } from '@app/common/types/notification';
+import { PushService } from '@app/common/push/push.service';
 
 const DAY = 24 * 60 * 60 * 1000;
 const STALE_AFTER = 30 * DAY; // an ACTIVE car the dealer has not touched for a month
@@ -20,6 +21,7 @@ export class ReminderBatchService {
 		@InjectModel('Car') private readonly carModel: Model<CarRow>,
 		@InjectModel('Member') private readonly memberModel: Model<MemberRow>,
 		@InjectModel('Notification') private readonly notificationModel: Model<NotificationInput>,
+		@Optional() private readonly push?: PushService, // optional: unit tests build the service without it
 	) {}
 
 	/**
@@ -60,6 +62,11 @@ export class ReminderBatchService {
 				authorId: car.memberId, // a system message about the dealer's own car
 				receiverId: car.memberId,
 				carId: car._id,
+			});
+			void this.push?.sendToMembers([car.memberId], {
+				title: `Is "${car.carTitle}" still for sale?`,
+				body: 'Confirm the listing, update it, or mark it sold.',
+				data: { type: 'notification', notificationType: NotificationType.LISTING_CHECK, carId: String(car._id) },
 			});
 		}
 		return count;

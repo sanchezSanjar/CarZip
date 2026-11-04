@@ -1,5 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsEnum, IsOptional, Length } from 'class-validator';
+import { IsEnum, IsOptional, Length, Matches } from 'class-validator';
+import { EXPO_PUSH_TOKEN } from '@app/common/push/push.service';
 import { DevicePlatform } from '@app/common/enums/member.enum';
 
 /**
@@ -18,6 +19,19 @@ export class DeviceInput {
 	@Length(1, 100)
 	@Field(() => String, { nullable: true })
 	deviceName?: string;
+
+	@IsOptional()
+	@IsEnum(DevicePlatform)
+	@Field(() => DevicePlatform, { nullable: true })
+	devicePlatform?: DevicePlatform;
+}
+
+/** the phone's Expo push token (the app gets it from expo-notifications) */
+@InputType()
+export class PushTokenInput {
+	@Matches(EXPO_PUSH_TOKEN, { message: 'Not an Expo push token' })
+	@Field(() => String)
+	token: string;
 
 	@IsOptional()
 	@IsEnum(DevicePlatform)

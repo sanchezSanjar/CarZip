@@ -6,11 +6,17 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { AuthMember } from './decorators/authMember.decorator';
 import { AuthTokens } from '../../libs/dto/auth/auth';
+import { PushTokenInput } from '../../libs/dto/auth/auth.input';
+import { AuthMemberData } from '../../libs/types/auth';
+import { PushService } from '@app/common/push/push.service';
 
 /** refresh-token sessions of devices that logged in with a device (API.md §2) */
 @Resolver()
 export class AuthResolver {
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly push: PushService,
+	) {}
 
 	// Public: the refresh token itself is the proof. Returns a new pair; the sent refresh token never works again
 	@Mutation(() => AuthTokens)
@@ -25,6 +31,24 @@ export class AuthResolver {
 	@Mutation(() => Boolean)
 	public async logout(@Args('refreshToken') refreshToken: string): Promise<boolean> {
 		await this.authService.logout(refreshToken);
+		return true;
+	}
+
+	// Authenticated: this phone gets push notifications for the logged-in member (until this session logs out)
+	@UseGuards(AuthGuard)
+	@Mutation(() => Boolean)
+	public async registerPushToken(
+		@Args('input') input: PushTokenInput,
+		@AuthMember() me: AuthMemberData,
+	): Promise<boolean> {
+		await this.push.register(me._id, input.token, me.sessionId, input.devicePlatform);
+		return true;
+	}
+
+	// Public: the phone turned notifications off. Always true
+	@Mutation(() => Boolean)
+	public async unregisterPushToken(@Args('token') token: string): Promise<boolean> {
+		await this.push.unregister(token);
 		return true;
 	}
 

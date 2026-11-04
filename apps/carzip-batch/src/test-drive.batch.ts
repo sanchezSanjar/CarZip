@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { TestDriveStatus } from '@app/common/enums/test-drive.enum';
 import { NotificationGroup, NotificationType } from '@app/common/enums/notification.enum';
 import { NotificationInput } from '@app/common/types/notification';
+import { PushService } from '@app/common/push/push.service';
 
 const HOUR = 60 * 60 * 1000;
 const REMIND_BEFORE = 24 * HOUR; // "your test drive is coming up" about a day before
@@ -29,6 +30,7 @@ export class TestDriveBatchService {
 		@InjectModel('TestDrive') private readonly testDriveModel: Model<TestDriveRow>,
 		@InjectModel('Car') private readonly carModel: Model<{ _id: Types.ObjectId; carTitle: string }>,
 		@InjectModel('Notification') private readonly notificationModel: Model<NotificationInput>,
+		@Optional() private readonly push?: PushService, // optional: unit tests build the service without it
 	) {}
 
 	/** a REQUEST the dealer never answered before its date can't happen any more: CANCEL, tell both sides */
@@ -139,6 +141,11 @@ export class TestDriveBatchService {
 			authorId,
 			receiverId,
 			carId: td.carId,
+		});
+		void this.push?.sendToMembers([receiverId], {
+			title,
+			body: `Test drive date: ${td.testDriveDate.toISOString()}`,
+			data: { type: 'notification', notificationType: NotificationType.TEST_DRIVE, carId: String(td.carId) },
 		});
 	}
 }

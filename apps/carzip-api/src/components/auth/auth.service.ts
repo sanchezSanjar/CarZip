@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { compare, genSalt, hash } from 'bcryptjs';
@@ -10,6 +10,7 @@ import { AuthTokens } from '../../libs/dto/auth/auth';
 import { AuthMemberData, JwtPayload } from '../../libs/types/auth';
 import { Message } from '@app/common/enums/common.enum';
 import { DevicePlatform, MemberStatus } from '@app/common/enums/member.enum';
+import { PushService } from '@app/common/push/push.service';
 
 type MemberAuthFields = AuthMemberData & { passwordChangedAt?: Date; sessionsRevokedAt?: Date };
 
@@ -42,6 +43,8 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		@InjectModel('RefreshToken') private readonly refreshTokenModel: Model<RefreshTokenDoc>,
+		// optional: unit tests build the service without it
+		@Optional() private readonly push?: PushService,
 	) {}
 
 	public async hashPassword(memberPassword: string): Promise<string> {
@@ -210,10 +213,12 @@ export class AuthService {
 				{ revokedAt: new Date() },
 			)
 			.exec();
+		await this.push?.removeMember(memberId, keepSessionId); // those phones stop getting pushes too
 	}
 
 	private async revokeSession(sessionId: string): Promise<void> {
 		await this.refreshTokenModel.updateMany({ sessionId, revokedAt: null }, { revokedAt: new Date() }).exec();
+		await this.push?.removeSessions([sessionId]);
 	}
 
 	/** a new random refresh token (256 bits) for the session. Only its hash is saved */

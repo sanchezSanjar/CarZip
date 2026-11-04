@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { NotificationInput } from '@app/common/types/notification';
@@ -8,6 +8,7 @@ import { Notifications } from '../../libs/dto/notification/notification';
 import { NotificationsInquiry } from '../../libs/dto/notification/notification.input';
 import { lookupPublicMember } from '../../libs/utils/lookup';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { PushService } from '@app/common/push/push.service';
 
 /**
  * Creates notifications for other modules, and lets each member read their own.
@@ -21,11 +22,13 @@ export class NotificationService {
 	constructor(
 		@InjectModel('Notification') private readonly notificationModel: Model<NotificationInput>,
 		@InjectModel('Member') private readonly memberModel: Model<{ _id: Types.ObjectId }>,
+		@Optional() private readonly push?: PushService, // optional: unit tests build the service without it
 	) {}
 
 	public async notify(input: NotificationInput): Promise<void> {
 		try {
 			await this.notificationModel.create(input);
+			this.pushOut([input.receiverId], input);
 		} catch (err: any) {
 			this.logger.error(`${input.notificationType} -> ${input.receiverId} failed: ${err?.message ?? err}`);
 		}
@@ -41,10 +44,25 @@ export class NotificationService {
 		// LIKE notifications (Notification.model.ts) refuses the second insert atomically instead.
 		try {
 			await this.notificationModel.create(input);
+			this.pushOut([input.receiverId], input);
 		} catch (err: any) {
 			if (err?.code === 11000) return; // already notified once: that's the point
 			this.logger.error(`${input.notificationType} -> ${input.receiverId} failed: ${err?.message ?? err}`);
 		}
+	}
+
+	/** the same notification on the phones, in the background (tapping it opens the car / article / notifications) */
+	private pushOut(receiverIds: Types.ObjectId[], input: Omit<NotificationInput, 'receiverId'>): void {
+		void this.push?.sendToMembers(receiverIds, {
+			title: input.notificationTitle,
+			body: input.notificationDesc,
+			data: {
+				type: 'notification',
+				notificationType: input.notificationType,
+				...(input.carId && { carId: String(input.carId) }),
+				...(input.articleId && { articleId: String(input.articleId) }),
+			},
+		});
 	}
 
 	/** the car / article is removed for good: notifications pointing at it would lead nowhere */
@@ -105,6 +123,10 @@ export class NotificationService {
 				.exec();
 			if (!admins.length) return;
 			await this.notificationModel.insertMany(admins.map((admin) => ({ ...input, receiverId: admin._id })));
+			this.pushOut(
+				admins.map((admin) => admin._id),
+				input,
+			);
 		} catch (err: any) {
 			this.logger.error(`${input.notificationType} -> admins failed: ${err?.message ?? err}`);
 		}
