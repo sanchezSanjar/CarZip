@@ -23,6 +23,11 @@ const SIZES: Record<UploadTarget, { main: sharp.ResizeOptions; thumb: sharp.Resi
 		main: { width: 512, height: 512, fit: 'cover' },
 		thumb: { width: 128, height: 128, fit: 'cover' },
 	},
+	// a photo in a message: big enough to see details of a car, the thumbnail fits a chat bubble
+	[UploadTarget.CHAT]: {
+		main: { width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true },
+		thumb: { width: 480, height: 480, fit: 'inside' },
+	},
 };
 
 interface ProcessedImage {

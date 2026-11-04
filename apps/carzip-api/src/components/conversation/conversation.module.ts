@@ -10,6 +10,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationResolver } from './conversation.resolver';
 import { AuthModule } from '../auth/auth.module';
 import { SocketModule } from '../../socket/socket.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
 	imports: [
@@ -23,6 +24,7 @@ import { SocketModule } from '../../socket/socket.module';
 		]),
 		AuthModule,
 		SocketModule, // new messages and read receipts go live to the two members
+		UploadModule, // "is this photo one of our chat uploads?"
 	],
 	providers: [ConversationService, ConversationResolver],
 })

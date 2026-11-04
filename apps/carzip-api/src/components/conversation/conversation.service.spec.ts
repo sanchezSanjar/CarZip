@@ -84,6 +84,7 @@ function setup({ existing = false, testDrive = false, blocked = false, recentMes
 		{ exists: vi.fn(() => query(testDrive ? { _id: 't' } : null)) } as never,
 		{ findById: vi.fn(() => query(null)), find: vi.fn(() => query([])) } as never,
 		socket as never,
+		{ isUploadedImage: (url: string) => url.includes('/uploads/chat/') } as never,
 	);
 	return { service, conversation, conversationModel, messageModel, created, socket };
 }
@@ -168,5 +169,31 @@ describe('ConversationService: messages', () => {
 			[String(buyer._id)],
 			expect.objectContaining({ event: 'conversationRead' }),
 		);
+	});
+
+	it('a photo message: our own chat upload is accepted and the list shows "📷 Photo"', async () => {
+		const { service, conversation, conversationModel } = setup({ existing: true });
+		const image = 'http://localhost:3007/uploads/chat/2f1c7a2e-0c1b-4f7e-9a1d-3b2c1d0e9f8a.webp';
+		const message = await service.sendMessage(buyer as never, {
+			conversationId: String(conversation._id),
+			messageImage: image,
+		});
+		expect(message).toMatchObject({ messageType: 'IMAGE', messageImage: image });
+		expect(conversationModel.updateOne).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ $set: expect.objectContaining({ lastMessageText: '📷 Photo' }) }),
+		);
+	});
+
+	it('a photo from anywhere else, or an empty message, is refused', async () => {
+		const { service, conversation, created } = setup({ existing: true });
+		const id = String(conversation._id);
+		await expect(
+			service.sendMessage(buyer as never, { conversationId: id, messageImage: 'https://evil.example/track.png' }),
+		).rejects.toThrow(Message.CHAT_IMAGE_NOT_UPLOADED);
+		await expect(service.sendMessage(buyer as never, { conversationId: id, messageText: '   ' })).rejects.toThrow(
+			Message.CHAT_EMPTY,
+		);
+		expect(created).toHaveLength(0);
 	});
 });

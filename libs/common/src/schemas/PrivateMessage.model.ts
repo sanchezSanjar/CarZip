@@ -7,7 +7,8 @@ const PrivateMessageSchema = new Schema(
 		conversationId: { type: Schema.Types.ObjectId, required: true, ref: 'Conversation' },
 		senderId: { type: Schema.Types.ObjectId, required: true, ref: 'Member' },
 		messageType: { type: String, enum: MessageType, default: MessageType.TEXT },
-		messageText: { type: String },
+		messageText: { type: String }, // the text, or the caption of a photo
+		messageImage: { type: String }, // IMAGE: an upload of target chat
 		carId: { type: Schema.Types.ObjectId, ref: 'Car' }, // "about this car": shown as a small car card
 	},
 	{ timestamps: { createdAt: true, updatedAt: false }, collection: 'privateMessages' },

@@ -3,4 +3,5 @@ export enum UploadTarget {
 	MEMBER = 'member', // profile photo
 	CAR = 'car', // car listing photos (agents only)
 	ARTICLE = 'article', // board article image (agents and admins)
+	CHAT = 'chat', // a photo in a private message (any member); deleted after its message is gone
 }

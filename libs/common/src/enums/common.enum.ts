@@ -89,4 +89,6 @@ export enum Message {
 	CHAT_MEMBER_UNAVAILABLE = 'This member is no longer available.',
 	CHAT_CAR_INVALID = "The car must be one of this dealer's cars.",
 	CHAT_TOO_FAST = 'You are sending messages too fast. Please slow down.',
+	CHAT_EMPTY = 'Write a message or add a photo.',
+	CHAT_IMAGE_NOT_UPLOADED = 'The photo must be uploaded through CarZip first (POST /upload/image, target chat).',
 }

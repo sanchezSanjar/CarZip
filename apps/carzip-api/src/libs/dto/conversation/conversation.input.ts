@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsDate, IsInt, IsMongoId, IsOptional, Length, Max, Min } from 'class-validator';
+import { IsDate, IsInt, IsMongoId, IsOptional, IsUrl, Length, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /** open (or create) the conversation with a member, optionally about one of the dealer's cars */
@@ -21,9 +21,17 @@ export class SendMessageInput {
 	@Field(() => String)
 	conversationId: string;
 
-	@Length(1, 1000)
-	@Field(() => String)
-	messageText: string;
+	/** the text, or a caption for the photo. A message needs a text or a photo */
+	@IsOptional()
+	@Length(0, 1000)
+	@Field(() => String, { nullable: true })
+	messageText?: string;
+
+	/** a photo uploaded with POST /upload/image, target chat */
+	@IsOptional()
+	@IsUrl({ require_tld: false })
+	@Field(() => String, { nullable: true })
+	messageImage?: string;
 
 	/** "about this car": the car becomes the conversation's car and shows as a card in the message */
 	@IsOptional()

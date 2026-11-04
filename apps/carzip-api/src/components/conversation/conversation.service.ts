@@ -26,6 +26,8 @@ import { Message } from '@app/common/enums/common.enum';
 import { MemberStatus, MemberType } from '@app/common/enums/member.enum';
 import { MessageType } from '@app/common/enums/conversation.enum';
 import { SocketGateway } from '../../socket/socket.gateway';
+import { UploadService } from '../upload/upload.service';
+import { UploadTarget } from '@app/common/enums/upload.enum';
 
 // spam limit: at most 20 private messages per minute per member
 const RATE_WINDOW_MS = 60 * 1000;
@@ -52,6 +54,7 @@ interface MessageDoc {
 	senderId: Types.ObjectId;
 	messageType: MessageType;
 	messageText?: string;
+	messageImage?: string;
 	carId?: Types.ObjectId;
 	createdAt: Date;
 }
@@ -78,6 +81,7 @@ export class ConversationService {
 		private readonly testDriveModel: Model<{ memberId: Types.ObjectId; sellerId: Types.ObjectId }>,
 		@InjectModel('Car') private readonly carModel: Model<{ memberId: Types.ObjectId }>,
 		private readonly socket: SocketGateway,
+		private readonly uploadService: UploadService,
 	) {}
 
 	public async startConversation(me: AuthMemberData, input: StartConversationInput): Promise<Conversation> {
@@ -149,14 +153,21 @@ export class ConversationService {
 		if (recent >= RATE_MAX) throw new HttpException(Message.CHAT_TOO_FAST, HttpStatus.TOO_MANY_REQUESTS);
 
 		const carId = input.carId ? await this.assertDealerCar(input.carId, conversation.agentId) : undefined;
-		const text = input.messageText.trim();
-		if (!text) throw new BadRequestException(Message.NOTHING_TO_UPDATE);
+		const text = input.messageText?.trim() ?? '';
+		const image = input.messageImage;
+		if (!text && !image) throw new BadRequestException(Message.CHAT_EMPTY);
+		// only photos our upload API produced for chats: no hot-linked or tracking images in private messages
+		if (image && !this.uploadService.isUploadedImage(image, UploadTarget.CHAT)) {
+			throw new BadRequestException(Message.CHAT_IMAGE_NOT_UPLOADED);
+		}
+		const messageType = image ? MessageType.IMAGE : MessageType.TEXT;
 
 		const created = await this.messageModel.create({
 			conversationId: conversation._id,
 			senderId: me._id,
-			messageType: MessageType.TEXT,
-			messageText: text,
+			messageType,
+			...(text && { messageText: text }),
+			...(image && { messageImage: image }),
 			...(carId && { carId }),
 		});
 		const message = created.toObject() as MessageDoc;
@@ -166,8 +177,9 @@ export class ConversationService {
 				{ _id: conversation._id },
 				{
 					$set: {
-						lastMessageText: text,
-						lastMessageType: MessageType.TEXT,
+						// the list shows a photo as "📷 Photo" (or its caption)
+						lastMessageText: text || '📷 Photo',
+						lastMessageType: messageType,
 						lastSenderId: me._id,
 						lastMessageAt: message.createdAt,
 						...(carId && { carId }),
@@ -288,6 +300,7 @@ export class ConversationService {
 			senderId: String(message.senderId),
 			messageType: message.messageType,
 			messageText: message.messageText,
+			messageImage: message.messageImage,
 			carId: message.carId ? String(message.carId) : undefined,
 			carData: message.carId ? cars.get(String(message.carId)) : undefined,
 			createdAt: message.createdAt,

@@ -31,6 +31,8 @@ export class PrivateMessage {
 	@Field(() => String) senderId: string;
 	@Field(() => MessageType) messageType: MessageType;
 	@Field(() => String, { nullable: true }) messageText?: string;
+	/** IMAGE: the photo URL (its thumbnail: the same name with _thumb) */
+	@Field(() => String, { nullable: true }) messageImage?: string;
 	@Field(() => String, { nullable: true }) carId?: string;
 	@Field(() => ChatCar, { nullable: true }) carData?: ChatCar;
 	@Field(() => Date) createdAt: Date;

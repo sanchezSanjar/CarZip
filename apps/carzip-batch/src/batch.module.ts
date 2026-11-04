@@ -19,6 +19,7 @@ import CommentSchema from '@app/common/schemas/Comment.model';
 import ViewSchema from '@app/common/schemas/View.model';
 import FollowSchema from '@app/common/schemas/Follow.model';
 import BlockSchema from '@app/common/schemas/Block.model';
+import PrivateMessageSchema from '@app/common/schemas/PrivateMessage.model';
 
 @Module({
 	imports: [
@@ -36,6 +37,7 @@ import BlockSchema from '@app/common/schemas/Block.model';
 			{ name: 'View', schema: ViewSchema },
 			{ name: 'Follow', schema: FollowSchema },
 			{ name: 'Block', schema: BlockSchema },
+			{ name: 'PrivateMessage', schema: PrivateMessageSchema }, // photos still used in private messages
 		]),
 	],
 	controllers: [BatchController],
