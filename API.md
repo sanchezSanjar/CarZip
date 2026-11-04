@@ -441,6 +441,7 @@ Images are uploaded over REST, not GraphQL. **Logged in only** (send the `Author
   - `car`: listing photos; AGENT or ADMIN.
   - `article`: article image; AGENT or ADMIN.
   - `chat`: a photo for a private message (§17); anyone logged in. Deleted about a day after its message.
+- **Voice messages** have their own endpoint, `POST /upload/voice` (§17).
 - **Formats:** jpeg, png and webp; **max 10 MB per file**.
 - **What the server stores:** it re-encodes every image to WebP and removes location (GPS) data.
 - **`images` is all-or-nothing:** one bad file fails the whole request, and the error names that file.
@@ -677,14 +678,14 @@ The token goes in the URL because browsers can't set headers on a WebSocket.
 
 ## 17. Private messages
 
-Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger: text and photos (voice messages come later). Everything needs a logged-in member.
+Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a messenger: text, photos and voice messages. Everything needs a logged-in member.
 
 | Operation | Purpose |
 | --- | --- |
 | `startConversation(input: { targetId, carId? })` | opens the conversation with this member, or creates it. `carId`: one of the dealer's cars, shown as the conversation's car |
 | `getConversations(input: { page, limit })` | my conversations, latest message first: `partner` (the other side's public profile), `carData`, `lastMessageText`, `myUnread`, `partnerReadAt` |
 | `getMessages(input: { conversationId, before?, limit })` | the thread, **newest first**, 1–50 per page. Older page: `before` = `createdAt` of the oldest message shown |
-| `sendMessage(input: { conversationId, messageText?, messageImage?, carId? })` | a text (up to 1000 characters), a photo, or a photo with a caption; returns the message (`messageType` `TEXT` or `IMAGE`) |
+| `sendMessage(input: { conversationId, messageText?, messageImage?, messageAudio?, messageDuration?, carId? })` | a text (up to 1000 characters), a photo (with an optional caption) or a voice message; returns the message (`messageType` `TEXT`, `IMAGE` or `VOICE`) |
 | `markConversationRead(conversationId)` | I opened the thread: `myUnread` becomes 0 and the other side sees it as read |
 | `getUnreadMessageCount` | the number for the Chat tab badge |
 
@@ -700,7 +701,9 @@ Conversations between **one buyer (`USER`) and one dealer (`AGENT`)**, like a me
 
 **Photos:** upload first with `POST /upload/image`, `target=chat` (any logged-in member, see §8), then send the returned `url` as `messageImage`. Only our own chat uploads are accepted. The list shows a photo as its caption, or "📷 Photo". Show the upload's `thumbnailUrl` (`..._thumb.webp`) in the bubble and the full photo when tapped.
 
-**Kept 14 days:** each message is deleted 14 days after it was sent, and a conversation 14 days after its last message (the public room in §16 keeps 7 days). A photo is deleted about a day after its message. The text is never written to the server logs.
+**Voice messages:** record AAC in `.m4a` (the phone apps) or `.webm` (a browser), at most **2 minutes** and 3 MB. Upload with `POST /upload/voice` (form field `file`, any logged-in member), then send the returned `url` as `messageAudio` with `messageDuration` (whole seconds, 1–120). The server checks that the file really is such a recording; only our own uploads are accepted. The list shows "🎤 Voice message".
+
+**Kept 14 days:** each message is deleted 14 days after it was sent, and a conversation 14 days after its last message (the public room in §16 keeps 7 days). A photo or recording is deleted about a day after its message. The text is never written to the server logs.
 
 **Live, over the same WebSocket as §16** (connected with a token): only the two members of the conversation receive
 
