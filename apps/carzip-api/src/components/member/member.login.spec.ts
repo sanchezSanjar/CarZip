@@ -17,16 +17,18 @@ const activeMember = {
 
 /** MemberService with only what login() uses; everything is fake, no database */
 function setup({
+	accountAndIpFailures = 0,
 	accountFailures = 0,
 	ipFailures = 0,
 	member = activeMember as object | null,
 	passwordOk = false,
 } = {}) {
 	const loginAttemptModel = {
-		// the account count asks by loginKey, the IP count by loginIp
-		countDocuments: vi.fn((query: Record<string, unknown>) =>
-			resolved('loginKey' in query ? accountFailures : ipFailures),
-		),
+		// the account+IP count asks by both, the account count by loginKey only, the IP count by loginIp only
+		countDocuments: vi.fn((query: Record<string, unknown>) => {
+			if ('loginKey' in query && 'loginIp' in query) return resolved(accountAndIpFailures);
+			return resolved('loginKey' in query ? accountFailures : ipFailures);
+		}),
 		create: vi.fn().mockResolvedValue({}),
 		deleteMany: vi.fn(() => resolved({ deletedCount: accountFailures })),
 	};
@@ -61,8 +63,8 @@ describe('MemberService.login: limit on failed logins', () => {
 		expect(loginAttemptModel.create).toHaveBeenCalledTimes(1);
 	});
 
-	it('after 5 failures for the account, even the right password is refused for now', async () => {
-		const { service, authService } = setup({ accountFailures: 5, passwordOk: true });
+	it('after 5 failures for the account from this IP, even the right password is refused for now', async () => {
+		const { service, authService } = setup({ accountAndIpFailures: 5, accountFailures: 5, passwordOk: true });
 		const error = await service.login(input, '1.2.3.4').catch((e: unknown) => e);
 		expect(error).toBeInstanceOf(HttpException);
 		expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
@@ -70,13 +72,35 @@ describe('MemberService.login: limit on failed logins', () => {
 		expect(authService.comparePassword).not.toHaveBeenCalled(); // no password guessing while locked
 	});
 
+	it('5 failures by a prankster elsewhere do not lock the real owner out at home', async () => {
+		// the owner's own IP has no failures; the account has 5 from another address
+		const { service } = setup({ accountAndIpFailures: 0, accountFailures: 5, passwordOk: true });
+		const member = await service.login({ ...input, memberPassword: 'right' }, '9.9.9.9');
+		expect(member.accessToken).toBe('new-token');
+	});
+
+	it('20 failures for the account from anywhere lock it for now, whatever the IP', async () => {
+		const { service, authService } = setup({ accountAndIpFailures: 0, accountFailures: 20, passwordOk: true });
+		await expect(service.login(input, '9.9.9.9')).rejects.toThrow(Message.LOGIN_TOO_MANY);
+		expect(authService.comparePassword).not.toHaveBeenCalled();
+	});
+
 	it('30 failures from one IP stop that IP from trying other accounts', async () => {
 		const { service } = setup({ ipFailures: 30 });
 		await expect(service.login(input, '1.2.3.4')).rejects.toThrow(Message.LOGIN_TOO_MANY);
 	});
 
+	it('counts the account and IP over the same 15-minute window', async () => {
+		const { service, loginAttemptModel } = setup();
+		await service.login(input, '1.2.3.4').catch(() => undefined);
+		const filters = loginAttemptModel.countDocuments.mock.calls.map(([query]) => query);
+		expect(filters).toHaveLength(3);
+		expect(filters).toContainEqual(expect.objectContaining({ loginKey: 'cz_buyer', loginIp: '1.2.3.4' }));
+		for (const filter of filters) expect(filter.createdAt).toHaveProperty('$gte');
+	});
+
 	it('4 failures still allow a try, and the right password clears the account counter', async () => {
-		const { service, loginAttemptModel } = setup({ accountFailures: 4, passwordOk: true });
+		const { service, loginAttemptModel } = setup({ accountAndIpFailures: 4, accountFailures: 4, passwordOk: true });
 		const member = await service.login({ ...input, memberPassword: 'right' }, '1.2.3.4');
 		expect(member.accessToken).toBe('new-token');
 		expect(loginAttemptModel.deleteMany).toHaveBeenCalledWith({ loginKey: 'cz_buyer' });

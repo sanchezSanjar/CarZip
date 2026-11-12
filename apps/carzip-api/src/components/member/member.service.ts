@@ -45,10 +45,13 @@ import { UploadService } from '../upload/upload.service';
 import { UploadTarget } from '@app/common/enums/upload.enum';
 import { SmsService } from '../sms/sms.service';
 
-// login limit: failed attempts counted over 15 minutes, per account and per IP (many accounts tried from one place)
+// login limit: failed attempts counted over 15 minutes
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILURES_PER_ACCOUNT = 5;
-const MAX_FAILURES_PER_IP = 30;
+const MAX_FAILURES_PER_ACCOUNT_AND_IP = 5; // one place guessing one account
+// the same account from anywhere: high enough that a prankster typing someone's nick can't lock them out
+// with 5 tries, low enough that many places guessing one password still stop early
+const MAX_FAILURES_PER_ACCOUNT = 20;
+const MAX_FAILURES_PER_IP = 30; // one place trying many accounts
 
 // unique index field -> message, for MongoDB duplicate key errors (code 11000)
 const DUPLICATE_MESSAGES: Record<string, Message> = {
@@ -255,11 +258,16 @@ export class MemberService {
 		// slow down password guessing: too many recent failures for this account (or from this IP) are refused first
 		const loginKey = String(input.memberPhone ?? input.memberNick ?? '').toLowerCase();
 		const since = new Date(Date.now() - LOGIN_WINDOW_MS);
-		const [keyFailures, ipFailures] = await Promise.all([
+		const [keyAndIpFailures, keyFailures, ipFailures] = await Promise.all([
+			this.loginAttemptModel.countDocuments({ loginKey, loginIp: ip, createdAt: { $gte: since } }).exec(),
 			this.loginAttemptModel.countDocuments({ loginKey, createdAt: { $gte: since } }).exec(),
 			this.loginAttemptModel.countDocuments({ loginIp: ip, createdAt: { $gte: since } }).exec(),
 		]);
-		if (keyFailures >= MAX_FAILURES_PER_ACCOUNT || ipFailures >= MAX_FAILURES_PER_IP) {
+		if (
+			keyAndIpFailures >= MAX_FAILURES_PER_ACCOUNT_AND_IP ||
+			keyFailures >= MAX_FAILURES_PER_ACCOUNT ||
+			ipFailures >= MAX_FAILURES_PER_IP
+		) {
 			throw new HttpException(Message.LOGIN_TOO_MANY, HttpStatus.TOO_MANY_REQUESTS);
 		}
 		const failed = async () => {
@@ -572,6 +580,9 @@ export class MemberService {
 		// a blocked / deleted buyer's open test-drive requests are cancelled, the dealers are told
 		if (input.memberStatus === MemberStatus.BLOCK || input.memberStatus === MemberStatus.DELETE) {
 			await this.testDriveService.cancelForBuyer(targetId, 'The buyer is no longer available on CarZip.', admin._id);
+			// every phone and browser of the member is logged out now (AuthGuard refuses them anyway) and
+			// stops getting push notifications: a blocked member's phone must not keep buzzing
+			await this.authService.revokeMemberSessions(targetId);
 		}
 		return updated;
 	}
