@@ -54,6 +54,37 @@ export class RedisService implements OnModuleDestroy {
 		return value;
 	}
 
+	/**
+	 * One more hit on `key`, which expires `ttlSeconds` after its FIRST hit; returns the count so far.
+	 * INCR is atomic in Redis, so many requests at the same moment each get their own number and a
+	 * "count then decide" limit can't be slipped past. null while Redis is not available.
+	 */
+	public async countHit(key: string, ttlSeconds: number): Promise<number | null> {
+		if (!this.isReady) return null;
+		try {
+			const results = await this.client!.multi().incr(key).expire(key, ttlSeconds, 'NX').exec();
+			const count = results?.[0]?.[1];
+			return typeof count === 'number' ? count : null;
+		} catch (err) {
+			this.logger.warn(`counter failed (${key}): ${(err as Error).message}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Take `key` for `ttlSeconds` if nobody holds it (SET NX): true = taken now, false = someone else has it.
+	 * null while Redis is not available.
+	 */
+	public async claim(key: string, ttlSeconds: number): Promise<boolean | null> {
+		if (!this.isReady) return null;
+		try {
+			return (await this.client!.set(key, '1', 'EX', ttlSeconds, 'NX')) === 'OK';
+		} catch (err) {
+			this.logger.warn(`claim failed (${key}): ${(err as Error).message}`);
+			return null;
+		}
+	}
+
 	/** forget cached values, e.g. after the data behind them changed */
 	public async invalidate(...keys: string[]): Promise<void> {
 		if (!this.isReady || !keys.length) return;
