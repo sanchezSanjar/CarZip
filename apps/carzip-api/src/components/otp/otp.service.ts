@@ -1,4 +1,11 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+	BadRequestException,
+	HttpException,
+	HttpStatus,
+	Injectable,
+	Optional,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { Model, Types } from 'mongoose';
@@ -11,8 +18,10 @@ import { OtpPurpose, OtpStatus } from '@app/common/enums/otp.enum';
 import { MemberStatus } from '@app/common/enums/member.enum';
 import { Message } from '@app/common/enums/common.enum';
 import { AuthMemberData } from '../../libs/types/auth';
+import { RedisService } from '@app/common/redis/redis.service';
 
 const MINUTE = 60 * 1000;
+const HOUR_SECONDS = 60 * 60;
 const CODE_TTL = 3 * MINUTE; // the SMS code
 const RESET_TOKEN_TTL = 10 * MINUTE; // the reset token a correct code buys
 const SIGNUP_VERIFIED_WINDOW = 15 * MINUTE; // time to fill the signup form after verifying the phone
@@ -45,6 +54,8 @@ export class OtpService {
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private readonly smsService: SmsService,
 		private readonly authService: AuthService,
+		// optional: unit tests build the service without it; without Redis the database counts (see checkRateLimit)
+		@Optional() private readonly redis?: RedisService,
 	) {}
 
 	/**
@@ -211,7 +222,14 @@ export class OtpService {
 			.exec();
 	}
 
+	/**
+	 * Every code is a paid SMS, so the limits must hold even against many requests sent at the same moment.
+	 * With Redis the counting is atomic (INCR): 50 parallel requests get the numbers 1..50 and only the first
+	 * 5 pass. Without Redis the database is counted (count, then insert), which a burst could slip past.
+	 */
 	private async checkRateLimit(otpPhone: string, otpPurpose: OtpPurpose, ip: string): Promise<void> {
+		if (await this.checkRateLimitInRedis(otpPhone, otpPurpose, ip)) return;
+
 		const hourAgo = new Date(Date.now() - 60 * MINUTE);
 		const [last, phoneCount, ipCount] = await Promise.all([
 			this.otpModel.findOne({ otpPhone, otpPurpose }).sort({ createdAt: -1 }).select('createdAt').lean<Otp>().exec(),
@@ -224,6 +242,27 @@ export class OtpService {
 		if (last && last.createdAt.getTime() > Date.now() - RESEND_COOLDOWN) {
 			throw new HttpException(Message.OTP_WAIT_BEFORE_RESEND, HttpStatus.TOO_MANY_REQUESTS);
 		}
+	}
+
+	/**
+	 * The atomic version of the limits. true = checked (and allowed), false = Redis is not available, so the
+	 * caller counts in the database instead. A refused request is counted too: hammering costs the caller.
+	 */
+	private async checkRateLimitInRedis(otpPhone: string, otpPurpose: OtpPurpose, ip: string): Promise<boolean> {
+		if (!this.redis) return false;
+		const [phoneCount, ipCount] = await Promise.all([
+			this.redis.countHit(`otp:phone:${otpPurpose}:${otpPhone}`, HOUR_SECONDS),
+			this.redis.countHit(`otp:ip:${ip}`, HOUR_SECONDS),
+		]);
+		if (phoneCount === null || ipCount === null) return false;
+		if (phoneCount > MAX_PER_PHONE_PER_HOUR || ipCount > MAX_PER_IP_PER_HOUR) {
+			throw new HttpException(Message.OTP_TOO_MANY_REQUESTS, HttpStatus.TOO_MANY_REQUESTS);
+		}
+		// the resend cooldown: the first request takes the key for a minute, the next ones in that minute wait
+		const free = await this.redis.claim(`otp:cooldown:${otpPurpose}:${otpPhone}`, RESEND_COOLDOWN / 1000);
+		if (free === null) return false;
+		if (!free) throw new HttpException(Message.OTP_WAIT_BEFORE_RESEND, HttpStatus.TOO_MANY_REQUESTS);
+		return true;
 	}
 
 	private async expire(_id: Types.ObjectId): Promise<void> {
