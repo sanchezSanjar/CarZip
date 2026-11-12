@@ -37,7 +37,7 @@ The exact types (every field, every enum value) are always available from the se
 | GraphQL endpoint     | `POST http(s)://<host>:<PORT_API>/graphql`                                     |
 | Image upload         | `POST /upload/image`, `POST /upload/images` (REST, multipart)                  |
 | Images are served at | `/uploads/...` (full URLs are returned by the upload API)                      |
-| Live chat            | `ws(s)://<host>:<PORT_API>?token=<accessToken>`                                |
+| Live chat            | `ws(s)://<host>:<PORT_API>`, then `{ "event": "auth", "data": "<accessToken>" }` |
 | Dates                | ISO 8601 strings in UTC, e.g. `2026-10-03T09:00:00.000Z` (`DateTime` scalar)   |
 | Ids                  | MongoDB ObjectId strings (24 hex chars). A malformed id returns `BAD_REQUEST`. |
 
@@ -642,7 +642,8 @@ All admin operations require `memberType: ADMIN`.
 A single public chat room on the API port, using **plain WebSocket** (not Socket.IO).
 
 ```js
-const ws = new WebSocket(`ws://localhost:3007?token=${token}`); // no token = guest
+const ws = new WebSocket('ws://localhost:3007'); // everyone connects as a guest first
+ws.onopen = () => ws.send(JSON.stringify({ event: 'auth', data: token })); // logged in: the token as the first message
 ws.onmessage = (e) => {
 	const msg = JSON.parse(e.data);
 	// msg.event: 'getMessages' | 'info' | 'message' | 'error'
@@ -650,6 +651,8 @@ ws.onmessage = (e) => {
 ws.send(JSON.stringify({ event: 'message', data: 'Hello!' })); // logged-in members only
 ws.send(JSON.stringify({ event: 'auth', data: newAccessToken })); // after every refresh (mobile app)
 ```
+
+**Why the token is a message, not part of the address:** a `?token=` in the address is written to nginx's access log and to proxy logs on the way, so a copy of the token would sit in log files. `ws://host?token=<accessToken>` still works for old clients, but the website and the app send `auth` right after connecting instead.
 
 **New token on an open connection (`auth`):** every message re-checks the token, and the mobile app's access token lasts 15 minutes. After each `refreshTokens`, send `{ "event": "auth", "data": "<new accessToken>" }`: the connection keeps going with the new token, no reconnect. A guest connection becomes a member one the same way (after login). A bad or expired token closes the connection with `4001`.
 
