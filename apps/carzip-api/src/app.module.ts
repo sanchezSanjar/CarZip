@@ -14,13 +14,16 @@ import { SocketModule } from './socket/socket.module';
 import { Message } from '@app/common/enums/common.enum';
 
 const logger = new Logger('GraphQLError');
+// the GraphQL playground and schema introspection are development tools: in production the schema stays private
+const isProduction = process.env.NODE_ENV === 'production';
 
 @Module({
 	imports: [
 		ConfigModule.forRoot(),
 		GraphQLModule.forRoot({
 			driver: ApolloDriver,
-			playground: true,
+			playground: !isProduction,
+			introspection: !isProduction,
 			uploads: false,
 			autoSchemaFile: true,
 			/**
