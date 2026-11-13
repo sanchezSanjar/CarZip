@@ -72,7 +72,7 @@ const lifetime = (token: string) => {
 const refused = new UnauthorizedException(Message.NOT_AUTHENTICATED);
 
 describe('AuthService: access tokens', () => {
-	it('without a device: one 30-day token, no session in it (the web today)', async () => {
+	it('without a device: one 30-day token, no session in it (old clients)', async () => {
 		const token = await auth.createToken(member as never);
 		expect(lifetime(token)).toBe(30 * 24 * 60 * 60);
 		expect(jwt.decode<JwtPayload>(token).sid).toBeUndefined();

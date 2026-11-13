@@ -59,7 +59,7 @@ export class AuthService {
 	/**
 	 * Only what guards need goes in the token. A JWT is signed, NOT encrypted: anyone can base64-decode it,
 	 * so phone, business number etc. never go in here. Fresh profile data comes from the DB.
-	 * With a sessionId (login with a device): 15 minutes and the session in "sid". Without: 30 days (the web today).
+	 * With a sessionId (login with a device): 15 minutes and the session in "sid". Without: 30 days (old clients).
 	 */
 	public async createToken(member: TokenMember, sessionId?: string): Promise<string> {
 		const payload: JwtPayload = {

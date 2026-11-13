@@ -5,7 +5,7 @@ import { DevicePlatform } from '@app/common/enums/member.enum';
 
 /**
  * The device logging in (login / signup). With it the member gets a 15-minute access token AND a refresh token;
- * without it, the old 30-day access token (the web today). See API.md §2.
+ * without it, the old 30-day access token (old clients). See API.md §2.
  */
 @InputType()
 export class DeviceInput {

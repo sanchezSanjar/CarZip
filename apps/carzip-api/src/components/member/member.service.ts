@@ -311,7 +311,7 @@ export class MemberService {
 
 	/**
 	 * Tokens for a member who just logged in or signed up. With a device (the mobile app): a session with a
-	 * 15-minute access token and a refresh token. Without (the web today): one 30-day access token.
+	 * 15-minute access token and a refresh token. Without (old clients): one 30-day access token.
 	 */
 	private async issueTokens(
 		member: Member,

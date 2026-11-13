@@ -68,7 +68,7 @@ Authorization: Bearer <accessToken>
 
 There are two kinds of login. The client picks one with `device` in the `login` / `signup` input:
 
-|                               | Without `device` (the web today) | With `device` (the mobile app)                                                   |
+|                               | Without `device` (old clients)   | With `device` (the website and the mobile app)                                   |
 | ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
 | `accessToken`                 | JWT, valid **30 days**           | JWT, valid **15 minutes**                                                        |
 | `refreshToken`                | `null`                           | random string, valid **60 days**, counted again from every refresh               |
@@ -138,7 +138,7 @@ mutation {
 | ----------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `refreshTokens(refreshToken)` | public    | `{ accessToken, refreshToken }`: a new pair. The sent refresh token is used up                                                            |
 | `logout(refreshToken)`        | public    | ends this device's session; always `true`                                                                                                 |
-| `logoutAll`                   | logged in | ends every session of the member and every access token issued until now, on every device and browser (the web's 30-day ones too); `true` |
+| `logoutAll`                   | logged in | ends every session of the member and every access token issued until now, on every device and browser (old 30-day tokens too); `true` |
 
 ```graphql
 mutation {
